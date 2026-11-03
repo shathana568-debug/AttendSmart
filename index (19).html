@@ -1,0 +1,3355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AttendSmart</title>
+<meta name="theme-color" content="#3525cd">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AttendSmart">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<script>
+  // Applies the saved light/dark choice before the page is drawn.
+  try { var __t = localStorage.getItem("attendsmart:theme"); if (__t === "light" || __t === "dark") document.documentElement.setAttribute("data-theme", __t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Liberation+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#3525cd; --primary-2:#4f46e5; --primary-soft:#e2dfff; --primary-ink:#0f0069;
+    --bg:#f8f9ff; --surface:#ffffff; --ink:#0b1c30; --muted:#464555; --muted-2:#777587;
+    --line:#e5eeff; --line-2:#c7c4d8;
+    --ok:#10b981; --ok-ink:#065f46; --ok-bg:#ecfdf5; --ok-line:#a7f3d0;
+    --warn:#f59e0b; --warn-ink:#92400e; --warn-bg:#fffbeb; --warn-line:#fde68a;
+    --bad:#ef4444; --bad-ink:#991b1b; --bad-bg:#fef2f2; --bad-line:#fecaca;
+    --radius:16px; --radius-sm:12px;
+    --shadow:0 1px 3px rgba(15,23,42,.04),0 4px 12px rgba(79,70,229,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0b1220; --surface:#131c2e; --ink:#e8edf8; --muted:#b4b8cc; --muted-2:#8d91a6;
+      --line:#23304a; --line-2:#3a4661; --primary-soft:#2a2570; --primary-ink:#c9c4ff;
+      --ok-bg:#0f2a22; --warn-bg:#2a2210; --bad-bg:#2a1414;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b1220; --surface:#131c2e; --ink:#e8edf8; --muted:#b4b8cc; --muted-2:#8d91a6;
+    --line:#23304a; --line-2:#3a4661; --primary-soft:#2a2570; --primary-ink:#c9c4ff;
+    --ok-bg:#0f2a22; --warn-bg:#2a2210; --bad-bg:#2a1414;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  html,body{background:var(--bg);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:14px;line-height:1.5}
+  body{min-height:100vh;padding-bottom:96px;overflow-x:hidden}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer;background:none;border:0}
+  svg{display:block;flex-shrink:0}
+  .mono{font-family:"Liberation Mono",monospace}
+  .caps{text-transform:uppercase;letter-spacing:.55px;font-size:11px;font-weight:700}
+  .c-ok{color:var(--ok-ink)} .c-warn{color:var(--warn-ink)} .c-bad{color:var(--bad-ink)}
+
+  /* ---------- App shell ---------- */
+  .topbar{position:sticky;top:0;z-index:20;height:64px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px;background:var(--surface);box-shadow:0 1px 1px rgba(0,0,0,.05)}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px;color:var(--primary);letter-spacing:-.4px}
+  .brand-mark{width:32px;height:32px;border-radius:8px;background:var(--primary);display:grid;place-items:center;color:#fff}
+  .icon-btn{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--muted);position:relative}
+  .icon-btn:hover{background:var(--primary-soft)}
+  .dot-badge{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:#ba1a1a;box-shadow:0 0 0 2px var(--surface)}
+
+  .bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-around;
+    padding:8px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(12px);
+    box-shadow:0 -4px 10px -3px rgba(0,0,0,.08)}
+  .navlink{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border-radius:12px;color:var(--muted);font-weight:700;font-size:11px;letter-spacing:.55px}
+  .navlink.active{background:var(--primary-soft);color:var(--primary-ink)}
+
+  .sidebar{display:none}
+  main{padding:16px;display:flex;flex-direction:column;gap:20px;max-width:1200px;margin:0 auto}
+  .view{display:none;flex-direction:column;gap:20px}
+  .view.active{display:flex}
+
+  /* ---------- Shared components ---------- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;min-width:0}
+  .card.tint{background:linear-gradient(156deg,var(--surface),var(--primary-soft) 240%)}
+  .h1{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.6px}
+  .h2{font-size:20px;line-height:28px;font-weight:700;letter-spacing:-.2px}
+  .h3{font-size:18px;line-height:24px;font-weight:700;letter-spacing:-.1px}
+  .muted{color:var(--muted)} .muted-2{color:var(--muted-2)}
+  .eyebrow{color:var(--primary);font-size:11px;font-weight:700;letter-spacing:.55px;text-transform:uppercase}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.55px;border:1px solid transparent;white-space:nowrap}
+  .pill .d{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .pill.ok{background:var(--ok-bg);color:var(--ok-ink);border-color:var(--ok-line)}
+  .pill.warn{background:var(--warn-bg);color:var(--warn-ink);border-color:var(--warn-line)}
+  .pill.bad{background:var(--bad-bg);color:var(--bad-ink);border-color:var(--bad-line)}
+  .pill.info{background:var(--primary-soft);color:var(--primary-ink);border-color:transparent}
+  .pill.neutral{background:var(--line);color:var(--muted);border-color:transparent}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:12px;font-weight:700;font-size:14px;letter-spacing:.14px}
+  .btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 4px -1px rgba(53,37,205,.25)}
+  .btn-soft{background:var(--primary-soft);color:var(--primary-ink)}
+  .btn-ghost{border:1px solid var(--line-2);color:var(--muted);background:var(--surface)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn-link{color:var(--primary);font-size:12px;font-weight:700;letter-spacing:.48px;display:inline-flex;gap:4px;align-items:center}
+  .progress{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+  .progress > span{display:block;height:100%;border-radius:inherit;background:var(--ok)}
+  .progress.warn > span{background:var(--warn)} .progress.bad > span{background:var(--bad)}
+  .split{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .section-head{display:flex;flex-direction:column;gap:6px}
+  .stack{display:flex;flex-direction:column;gap:12px}
+  .row-cell{display:flex;align-items:center;gap:12px}
+  .avatar{width:48px;height:48px;border-radius:12px;background:linear-gradient(45deg,#3525cd,#4f46e5);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:4px;background:rgba(226,223,255,.6);color:var(--primary);font-size:11px;font-weight:700;letter-spacing:.55px}
+  .alert{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:12px;font-size:12px;line-height:18px}
+  .alert.ok{background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok-ink)}
+  .alert.info{background:var(--primary-soft);color:var(--primary-ink)}
+  .divider{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+  .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .field label{font-weight:700;font-size:12px;letter-spacing:.48px}
+  .field label em{color:#ba1a1a;font-style:normal}
+  .input{width:100%;padding:13px 17px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font-size:14px;min-width:0}
+  .input.sel{appearance:none;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23464555' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 16px center;padding-right:40px}
+  .select{position:relative;min-width:0}
+  .grid-2,.grid-3{display:grid;grid-template-columns:1fr;gap:20px;align-items:start}
+  .tint-ring{position:absolute;border-radius:50%;filter:blur(64px);pointer-events:none}
+
+  /* ---------- Sidebar (desktop) ---------- */
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);opacity:0;transition:.25s;
+    background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:12px;font-size:13px;font-weight:600;z-index:50;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--bad-ink);color:#fff}
+
+  /* ---------- 1. Dashboard ---------- */
+  .profile-banner{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .avatar-wrap{position:relative}
+  .avatar-wrap .online{position:absolute;right:-4px;bottom:-4px;width:16px;height:16px;border-radius:50%;background:var(--ok);border:2px solid var(--surface)}
+  .snapshot{display:flex;gap:12px;align-items:center;padding:11px 17px;border-radius:12px;background:var(--line);border:1px solid rgba(199,196,216,.3)}
+  .hero-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .big{font-size:60px;line-height:60px;font-weight:800;letter-spacing:-1.5px;color:var(--ink)}
+  .big.ok{color:var(--ok-ink)} .big.warn{color:var(--warn-ink)} .big.bad{color:var(--bad-ink)}
+  .hero-split{display:grid;grid-template-columns:1fr;gap:20px}
+  .ring-box{display:flex;flex-direction:column;gap:12px;align-items:center;background:rgba(239,244,255,.5);border:1px solid var(--line);border-radius:16px;padding:17px}
+  .ring{position:relative;width:176px;height:176px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .bgc{fill:none;stroke:var(--line);stroke-width:14}
+  .ring .arc{fill:none;stroke-width:14;stroke-linecap:round;transition:stroke-dashoffset .6s}
+  .ring .arc.ok{stroke:var(--ok)} .ring .arc.warn{stroke:var(--warn)} .ring .arc.bad{stroke:var(--bad)}
+  .ring .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .calc-box{display:flex;gap:10px;padding:13px;border-radius:12px;background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok-ink);font-weight:500;font-size:12px;line-height:18px}
+  .legend{display:grid;gap:10px}
+  .legend-item{display:flex;gap:8px;align-items:center;padding:12px;border-radius:12px;border:1px solid;font-size:11px;font-weight:700}
+  .legend-item small{display:block;font-weight:600;font-size:11px;opacity:.9}
+  .action{display:flex;align-items:center;justify-content:space-between;padding:14px;border-radius:12px;font-weight:700;font-size:14px;width:100%;text-align:left;gap:12px}
+  .action.primary{background:var(--primary);color:#fff;box-shadow:0 2px 4px rgba(79,70,229,.25)}
+  .action.soft{background:var(--line);border:1px solid rgba(199,196,216,.4);color:var(--primary)}
+  .action.white{background:var(--surface);border:1px solid var(--line-2);color:var(--ink)}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .stat-head{display:flex;justify-content:space-between;align-items:center}
+  .stat-ico{width:36px;height:36px;border-radius:12px;display:grid;place-items:center}
+  .stat-val{font-size:36px;line-height:44px;font-weight:700;letter-spacing:-.9px}
+  .sched{padding:17px;border-radius:16px;border:1px solid var(--line);background:color-mix(in srgb,var(--line) 40%,transparent);display:flex;flex-direction:column;gap:12px}
+  .time-chip{width:64px;min-height:48px;border-radius:12px;background:var(--primary-soft);color:var(--primary);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;padding:6px 0}
+  .seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:6px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);align-self:flex-end}
+  .seg button{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted)}
+  .seg button.on{background:var(--primary);color:#fff;font-weight:700}
+  .perf-row{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .perf-row:last-child{border-bottom:0}
+
+  /* ---------- 2. Mark ---------- */
+  .date-switch{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px;border-radius:16px;background:var(--line);border:1px solid rgba(199,196,216,.4)}
+  .date-switch .mid{flex:1;text-align:center;font-weight:600;font-size:18px;line-height:24px}
+  .date-switch .nav{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:transparent;color:var(--muted)}
+  .status-group{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .status-opt{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:12px;border:2px solid var(--line-2);background:var(--line);font-weight:700;font-size:14px;color:var(--muted)}
+  .status-opt .r{width:20px;height:20px;border-radius:50%;background:#cbd5e1;display:grid;place-items:center}
+  .status-opt.on.present{border-color:var(--ok);background:var(--ok-bg);color:var(--ok-ink)}
+  .status-opt.on.present .r{background:var(--ok)}
+  .status-opt.on.absent{border-color:var(--bad);background:var(--bad-bg);color:var(--bad-ink)}
+  .status-opt.on.absent .r{background:var(--bad)}
+  .summary-mini{display:grid;grid-template-columns:1fr;gap:12px}
+  .mini{padding:15px;border-radius:16px;background:var(--surface);border:1px solid var(--line-2);display:flex;flex-direction:column;gap:4px}
+  .mini .v{font-size:24px;line-height:32px;font-weight:700}
+  .mini .k{font-size:11px;font-weight:700;letter-spacing:.55px;text-transform:uppercase;color:var(--muted)}
+  .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  table{width:100%;border-collapse:collapse;min-width:520px}
+  th{background:rgba(239,244,255,.7);text-align:left;font-size:11px;font-weight:700;letter-spacing:.55px;text-transform:uppercase;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line)}
+  td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:13px}
+  tr:last-child td{border-bottom:0}
+  .seg-toggle{display:inline-flex;gap:4px;padding:4px;border-radius:12px;background:var(--line);flex-wrap:wrap}
+  .seg-toggle button{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;color:var(--muted)}
+  .seg-toggle button.on{background:var(--surface);color:var(--primary)}
+  .logo-tile{width:32px;height:32px;border-radius:8px;background:var(--primary-soft);color:var(--primary);font-weight:700;font-size:12px;display:grid;place-items:center;flex-shrink:0}
+
+  /* ---------- 3. Calculate ---------- */
+  .standing-val{font-size:48px;line-height:56px;font-weight:800;letter-spacing:-1.2px}
+  .track{position:relative;height:12px;border-radius:999px;background:var(--line);overflow:visible}
+  .track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--bad);transition:width .5s}
+  .track .fill.ok{background:var(--ok)} .track .fill.warn{background:var(--warn)}
+  .track .pin{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--ink);border-radius:2px;transform:translateX(-1px)}
+  .target-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .target{padding:14px 12px;border-radius:12px;border:1px solid rgba(199,196,216,.4);background:var(--line);display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:700}
+  .target .n{font-size:18px;line-height:24px}
+  .target .t{font-size:11px;letter-spacing:.55px;text-transform:uppercase;color:var(--muted)}
+  .target.on{background:var(--primary-soft);border:2px solid var(--primary);color:var(--primary)}
+  .figure{font-size:48px;line-height:56px;font-weight:800;letter-spacing:-1.2px;color:var(--primary)}
+  .mini-box{flex:1;text-align:center;padding:9px;border-radius:8px;font-weight:700;font-size:12px;line-height:16px}
+  .safe-box{background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok-ink)}
+  .risk-box{background:var(--bad-bg);border:1px solid var(--bad-line);color:var(--bad-ink)}
+  .slider{width:100%;accent-color:var(--primary)}
+  .subj-name{display:flex;flex-direction:column}
+
+  /* ---------- 4. History ---------- */
+  .filters{display:grid;grid-template-columns:1fr;gap:10px}
+  .sum{display:grid;gap:10px;grid-template-columns:1fr}
+  .sum-card{border-radius:16px;border:2px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+  .sum-card.ok{border-color:var(--ok-line)} .sum-card.warn{border-color:var(--warn-line)} .sum-card.bad{border-color:var(--bad-line)}
+  .sum-card .big2{font-size:36px;line-height:44px;font-weight:800;letter-spacing:-.9px}
+  .bars{display:flex;align-items:flex-end;gap:10px;padding:0 4px;margin-top:8px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+  .bar .lbl{font-size:11px;font-weight:700;color:var(--muted);text-align:center;line-height:14px}
+  .track-col{position:relative;width:100%;max-width:52px;height:150px;border-radius:12px 12px 0 0;background:rgba(199,196,216,.15)}
+  .track-col .fill{position:absolute;left:0;right:0;bottom:0;border-radius:12px 12px 0 0}
+  .track-col .fill.ok{background:var(--ok)} .track-col .fill.warn{background:var(--warn)} .track-col .fill.bad{background:var(--bad)}
+  .tline{position:absolute;left:-4px;right:-4px;border-top:2px dashed rgba(53,37,205,.45);bottom:80%;pointer-events:none}
+  .subj-grid{display:grid;grid-template-columns:1fr;gap:12px}
+  .subj-card{display:flex;flex-direction:column;gap:8px}
+  .subj-card .big3{font-family:"Liberation Mono",monospace;font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.6px}
+  .pager{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+
+  /* ---------- 5. Profile ---------- */
+  .form-grid{display:grid;grid-template-columns:1fr;gap:24px}
+  .sec-title{display:flex;align-items:center;gap:10px;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:20px}
+  .live{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;border-radius:16px;padding:24px;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);position:relative;overflow:hidden}
+  .live .chip{background:rgba(255,255,255,.2);padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;display:inline-block}
+  .live .initials{width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;font-weight:700;font-size:20px;margin-top:8px}
+  .live .sub{color:rgba(255,255,255,.8);font-family:"Liberation Mono",monospace;font-size:12px}
+  .live .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:rgba(255,255,255,.7);padding:6px 0}
+  .live .meta b{color:rgba(255,255,255,.95);font-weight:600;text-align:right}
+  .checkline{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:22px}
+  .checkline input{width:20px;height:20px;margin-top:2px;accent-color:var(--primary)}
+  .input-icon{position:relative}
+  .input-icon svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);pointer-events:none}
+  .input-icon .input{padding-left:41px}
+
+  /* ---------- Responsive ---------- */
+  @media (min-width:640px){
+    .filters{grid-template-columns:1fr 1fr 1fr}
+    .filters .wide{grid-column:auto}
+    .sum{grid-template-columns:repeat(3,1fr)}
+    .summary-mini{grid-template-columns:repeat(4,1fr)}
+    .subj-grid{grid-template-columns:1fr 1fr}
+    .target-opts{grid-template-columns:repeat(4,1fr)}
+  }
+  @media (min-width:900px){
+    body{padding-bottom:0;padding-left:240px}
+    .bottomnav{display:none}
+    .topbar{padding-left:264px}
+    .sidebar{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;top:0;bottom:0;width:240px;padding:20px 12px;background:var(--surface);border-right:1px solid var(--line);z-index:40}
+    .sidebar .brand{padding:0 8px 20px}
+    .sidebar .navlink{flex-direction:row;justify-content:flex-start;gap:12px;padding:12px;font-size:13px;letter-spacing:0}
+    main{padding:24px 32px}
+    .grid-2{grid-template-columns:1fr 1fr;gap:20px}
+    .grid-3{grid-template-columns:repeat(3,1fr);gap:20px}
+    .hero-split{grid-template-columns:1.2fr 1fr}
+    .form-grid{grid-template-columns:1.6fr 1fr;align-items:start}
+    .mark-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+    .sticky-side{position:sticky;top:88px}
+    .filters{grid-template-columns:1fr 1fr 1fr}
+  }
+  @media (min-width:1200px){
+    .stat-grid{grid-template-columns:repeat(4,1fr)}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  /* ---------- My Timetable ---------- */
+  .dayrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+  .dayrow.brk{background:var(--warn-bg);border-color:var(--warn-line)}
+  .dayrow .acts,.subj-row .acts{margin-left:auto;display:flex;gap:6px}
+  .subj-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+  .mini-btn{padding:6px 10px;border-radius:8px;border:1px solid var(--line-2);font-size:12px;font-weight:700;color:var(--muted);background:var(--surface)}
+  .mini-btn:hover{background:var(--primary-soft)}
+  .mini-btn.danger{color:var(--bad-ink);border-color:var(--bad-line)}
+  #dayTabs button{padding:8px 12px}
+  .seg-toggle button:disabled{opacity:.5}
+  @media (max-width:639px){ .dayrow .acts,.subj-row .acts{width:100%;margin-left:0} }
+  /* ---------- Login gate ---------- */
+  .auth-gate{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+  .auth-card{width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px}
+  /* ---------- v7 additions ---------- */
+  .alert.warnbox{background:var(--bad-bg);border:1px solid var(--bad-line);color:var(--bad-ink);align-items:center}
+  .warn-ico{width:28px;height:28px;border-radius:50%;background:var(--bad);color:#fff;display:grid;place-items:center;font-weight:800;flex-shrink:0}
+  .strike{text-decoration:line-through;opacity:.7}
+  .sched.cancelled{opacity:.7}
+  .chart{width:100%;height:auto;display:block}
+  .chart .gridline{stroke:var(--line-2);stroke-width:1;opacity:.6}
+  .chart .axis{fill:var(--muted-2);font-size:11px}
+  .chart .threshold{stroke:var(--bad);stroke-width:1.5;stroke-dasharray:5 4}
+  .chart .bar-ok{fill:var(--ok)} .chart .bar-warn{fill:var(--warn)} .chart .bar-bad{fill:var(--bad)}
+  .checkline{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:20px;cursor:pointer}
+  .checkline input{margin-top:4px}
+  .btn-link{color:var(--primary);font-weight:700;font-size:13px;text-align:left}
+  .print-only{display:none}
+  @media print{
+    body *{visibility:hidden}
+    .print-only,.print-only *{visibility:visible}
+    .print-only{display:block;position:absolute;left:0;top:0;width:100%;padding:16px;color:#000;background:#fff}
+    .print-only table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px}
+    .print-only th,.print-only td{border:1px solid #999;padding:4px 6px;text-align:left}
+    .print-only h1{font-size:20px;margin-bottom:8px}
+    .print-only h2{font-size:14px;margin:12px 0 6px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Desktop sidebar -->
+<nav class="sidebar" aria-label="Primary">
+  <div class="brand"><span class="brand-mark"><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><path d="M1 13V4l7-3 7 3v9" stroke="#fff" stroke-width="1.6"/><path d="M5 13V8h6v5" stroke="#fff" stroke-width="1.6"/></svg></span>AttendSmart</div>
+  <button class="navlink" data-view="dashboard">Dashboard</button>
+  <button class="navlink" data-view="mark">Mark Attendance</button>
+  <button class="navlink" data-view="timetable">My Timetable</button>
+  <button class="navlink" data-view="calculate">Smart Calculator</button>
+  <button class="navlink" data-view="history">Attendance History</button>
+  <button class="navlink" data-view="profile">My Profile</button>
+</nav>
+
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="brand"><span class="brand-mark"><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><path d="M1 13V4l7-3 7 3v9" stroke="#fff" stroke-width="1.6"/><path d="M5 13V8h6v5" stroke="#fff" stroke-width="1.6"/></svg></span>AttendSmart</div>
+  </div>
+  <button class="icon-btn" type="button" aria-label="Switch light or dark mode" title="Light or dark mode" data-action="theme-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 107 7z"/></svg></button>
+  <button class="icon-btn" aria-label="Notifications" data-action="notify"><svg width="16" height="20" viewBox="0 0 16 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 14V8a6 6 0 0112 0v6l1.5 2h-15z"/><path d="M6 18a2 2 0 004 0"/></svg><span class="dot-badge" hidden></span></button>
+</header>
+
+<main>
+
+  <!-- ============ 1. DASHBOARD ============ -->
+  <section class="view active" id="dashboard" aria-label="Dashboard">
+    <div class="card profile-banner">
+      <div class="avatar-wrap">
+        <div class="avatar" id="dashInitials">--</div>
+        <span class="online"></span>
+      </div>
+      <div class="stack" style="gap:6px;flex:1;min-width:200px">
+        <div class="h2" id="dashName" style="font-size:20px">Set up your profile</div>
+        <span class="tag" id="dashReg" style="align-self:flex-start">Reg: —</span>
+        <div class="muted" id="dashProgram">Open My Profile to register</div>
+      </div>
+      <div class="snapshot" style="flex:1;min-width:240px">
+        <div style="width:31px;height:33px;border-radius:8px;background:var(--primary-soft);display:grid;place-items:center;color:var(--primary)"><svg width="14" height="16" viewBox="0 0 14 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="12" height="14" rx="2"/><path d="M4 5h6M4 8h6M4 11h4"/></svg></div>
+        <div>
+          <div class="caps muted">Today's schedule</div>
+          <div style="font-weight:600" id="dashToday">No lectures logged today</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="alertBox" class="stack" style="gap:10px" hidden></div>
+
+    <div class="alert info" id="remindBox" role="status" hidden style="align-items:center">
+      <div style="flex:1"><b style="font-size:14px">Time to mark today's attendance</b><div class="muted" style="font-size:12px">Mark each period you attended today, then press Save Attendance.</div></div>
+      <button class="btn btn-primary" type="button" data-view="mark" style="padding:8px 14px;font-size:12px">Mark now</button>
+    </div>
+
+    <div class="grid-2">
+      <div class="stack" style="gap:20px">
+        <!-- Hero card -->
+        <article class="card" style="position:relative;overflow:hidden">
+          <div class="tint-ring" style="top:-64px;right:-64px;width:256px;height:256px;background:rgba(16,185,129,.1)"></div>
+          <div class="stack" style="gap:24px;position:relative">
+            <div class="hero-top">
+              <div>
+                <div class="caps muted">Aggregate performance</div>
+                <div class="h2">Overall Attendance</div>
+              </div>
+              <span class="pill" id="heroPill">—</span>
+            </div>
+            <div class="hero-split">
+              <div class="stack" style="gap:16px">
+                <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+                  <span class="big" id="heroPct">0.0%</span>
+                  <span class="pill neutral" id="heroDelta" style="font-size:12px;letter-spacing:0">—</span>
+                </div>
+                <p class="muted" id="heroText">Log your first lecture to see your attendance.</p>
+                <div class="calc-box" id="heroBuffer">Buffer and recovery guidance will appear here.</div>
+              </div>
+              <div class="ring-box">
+                <div class="ring">
+                  <svg width="176" height="176" viewBox="0 0 176 176">
+                    <circle class="bgc" cx="88" cy="88" r="76"/>
+                    <circle class="arc ok" id="ringArc" cx="88" cy="88" r="76"/>
+                  </svg>
+                  <div class="center">
+                    <div class="h3" id="ringPct">0%</div>
+                    <div class="caps muted" id="ringCount" style="font-size:11px">0 / 0</div>
+                  </div>
+                </div>
+                <div class="caps muted">Required minimum: <span id="heroTarget">80.0%</span></div>
+              </div>
+            </div>
+
+            <div class="divider" style="margin-top:0">
+              <div class="caps muted" style="margin-bottom:12px">Attendance regulatory thresholds</div>
+              <div class="legend">
+                <div class="legend-item" style="background:var(--bad-bg);border-color:var(--bad-line);color:#dc2626"><span style="width:12px;height:12px;border-radius:50%;background:var(--bad)"></span><div>&lt; 80% Critical Danger<small style="color:#b91c1c">Debarment risk (shortage)</small></div></div>
+                <div class="legend-item" style="background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)"><span style="width:12px;height:12px;border-radius:50%;background:var(--warn)"></span><div>80% - 82% Warning<small style="color:#b45309">Borderline buffer</small></div></div>
+                <div class="legend-item" style="background:var(--ok-bg);border-color:#6ee7b7;color:var(--ok-ink)"><span style="width:12px;height:12px;border-radius:50%;background:var(--ok)"></span><div>&gt; 82% Safe Zone<small style="color:#047857">Exams cleared</small></div></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Stat cards -->
+        <div class="stat-grid">
+          <article class="card">
+            <div class="stat-head"><span class="caps muted">Conducted</span><span class="stat-ico" style="background:var(--primary-soft)"><svg width="14" height="15" viewBox="0 0 14 15" fill="none" stroke="#3525cd" stroke-width="1.6"><rect x="1" y="2" width="12" height="12" rx="2"/><path d="M1 6h12M4 0v3M10 0v3"/></svg></span></div>
+            <div class="stat-val" id="statConducted" style="margin-top:12px">0</div>
+            <div class="split muted" style="margin-top:4px"><span>Total Classes</span></div>
+          </article>
+          <article class="card">
+            <div class="stat-head"><span class="caps muted">Attended</span><span class="stat-ico" style="background:#d1fae5"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="#059669" stroke-width="2"><path d="M2 8l4 4 7-8"/></svg></span></div>
+            <div class="stat-val" id="statAttended" style="margin-top:12px;color:var(--ok-ink)">0</div>
+            <div class="split muted" style="margin-top:4px"><span>Classes Attended</span><span class="pill ok" id="statAttendedPct" style="font-size:11px">0%</span></div>
+          </article>
+          <article class="card">
+            <div class="stat-head"><span class="caps muted">Absences</span><span class="stat-ico" style="background:var(--bad-bg)"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="#ef4444" stroke-width="2"><path d="M3 3l9 9M12 3l-9 9"/></svg></span></div>
+            <div class="stat-val" id="statAbsent" style="margin-top:12px;color:var(--bad-ink)">0</div>
+            <div class="split muted" style="margin-top:4px"><span>Classes Absent</span><span class="pill bad" id="statAbsentPct" style="font-size:11px">0%</span></div>
+          </article>
+          <article class="card tint" style="border-color:rgba(195,192,255,.4)">
+            <div class="stat-head"><span class="caps" style="color:var(--primary)">Streak</span><span class="stat-ico" style="background:#fef3c7"><svg width="12" height="14" viewBox="0 0 12 14" fill="#f59e0b"><path d="M6 0c1 3 5 4 5 8.5A5 5 0 011 8.5C1 6 2.5 4.5 3 3c1 1.5 1.5 2 2 2C4.5 3.5 5 1.5 6 0z"/></svg></span></div>
+            <div style="margin-top:12px;display:flex;gap:6px;align-items:baseline"><span class="stat-val" id="statStreak" style="margin:0">0</span><span class="muted" style="font-size:18px">Days</span></div>
+            <div class="split muted" style="margin-top:4px"><span>Consecutive present</span><span class="pill warn" id="statStreakPill" style="font-size:11px;letter-spacing:0" hidden>On Fire</span></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="stack" style="gap:20px">
+        <!-- Fast actions -->
+        <article class="card">
+          <div class="caps" style="color:var(--primary)">Fast actions</div>
+          <div class="h3" style="margin-top:4px">Quick Academic Tools</div>
+          <p class="muted" style="font-size:12px;margin-top:4px">One-tap utilities to log classes, forecast skips, and export official records.</p>
+          <div class="stack" style="margin-top:20px">
+            <button class="action primary" data-view="mark"><span style="display:flex;gap:12px;align-items:center"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="9" cy="9" r="7"/><path d="M5.5 9l2.5 2.5 4.5-5"/></svg>Mark Today's Attendance</span><svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="#fff" stroke-width="1.6"><path d="M2 1l4 3.5L2 8"/></svg></button>
+            <button class="action soft" data-view="calculate"><span style="display:flex;gap:12px;align-items:center"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3525cd" stroke-width="1.6"><rect x="2" y="3" width="14" height="13" rx="2"/><path d="M2 7h14M6 1v4M12 1v4"/></svg>Smart Calculator</span><span class="tag">Bunk Predictor</span></button>
+            <button class="action white" data-action="export-xlsx"><span style="display:flex;gap:12px;align-items:center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#3525cd" stroke-width="1.6"><path d="M8 1v9M4 7l4 4 4-4M2 14h12"/></svg>Download Attendance Report</span><svg width="9" height="12" viewBox="0 0 9 12" fill="none" stroke="#464555" stroke-width="1.6"><path d="M2 1l5 5-5 5"/></svg></button>
+          </div>
+          <div class="divider" style="display:flex;gap:8px;align-items:center;font-weight:700;font-size:11px;letter-spacing:.55px;color:var(--muted)">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#3525cd" stroke-width="1.6"><circle cx="6" cy="6" r="5"/><path d="M6 3v3l2 1"/></svg>Next official cutoff report: Friday, Oct 25
+          </div>
+        </article>
+
+        <!-- Today's schedule -->
+        <article class="card">
+          <div class="split" style="flex-wrap:wrap;align-items:flex-start">
+            <div class="section-head" style="gap:4px">
+              <div class="h2" style="font-size:20px">Today's Class Schedule</div>
+              <div class="muted" style="font-size:12px">Periods from your timetable. Mark each one as it happens.</div>
+            </div>
+            <span class="pill neutral" id="schedDate">Today</span>
+          </div>
+          <div class="stack" id="schedList" style="margin-top:16px"></div>
+        </article>
+
+        <!-- Subject performance -->
+        <article class="card">
+          <div class="section-head" style="gap:4px">
+            <div class="h3">Subject Performance</div>
+            <div class="muted" style="font-size:12px">Course-wise attendance against the 80% statutory threshold</div>
+          </div>
+          <div id="subjectPerf" style="margin-top:8px"></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. MARK ATTENDANCE ============ -->
+  <section class="view" id="mark" aria-label="Daily attendance logger">
+    <div class="card" style="display:flex;flex-direction:column;gap:16px">
+      <div class="section-head">
+        <div class="eyebrow">Attendance session control</div>
+        <div class="h1">Daily Attendance Logger</div>
+        <p class="muted">Mark each period from your timetable as Present or Absent. Choose the other status later to correct an entry.</p>
+      </div>
+      <div class="date-switch">
+        <button class="nav" data-action="date-step" data-value="-1" aria-label="Previous day"><svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1L1 6l6 5"/></svg></button>
+        <div class="mid" id="markDateLabel">Today</div>
+        <button class="nav" data-action="date-step" data-value="1" aria-label="Next day"><svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 1l6 5-6 5"/></svg></button>
+      </div>
+      <div class="field" style="max-width:260px">
+        <label for="markDate">Pick a date</label>
+        <input id="markDate" class="input" type="date">
+      </div>
+    </div>
+
+    <div class="alert ok" id="markBanner" role="status" hidden style="align-items:center">
+      <span style="width:36px;height:36px;border-radius:12px;background:rgba(16,185,129,.2);display:grid;place-items:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#059669" stroke-width="2"><path d="M3 9l4 4 8-8"/></svg></span>
+      <div style="flex:1"><b style="font-size:14px">Saved to Google Sheets</b><div id="markBannerText"></div></div>
+    </div>
+
+    <div class="alert info" id="markHoliday" role="status" hidden></div>
+    <div class="alert warnbox" id="markFutureNote" hidden>Future dates cannot be marked. Choose today or an earlier date.</div>
+
+    <div class="mark-grid">
+      <article class="card">
+        <div class="split" style="padding-bottom:17px;border-bottom:1px solid rgba(199,196,216,.2)">
+          <div class="row-cell">
+            <div><div class="h3" style="font-size:18px">Periods on <span id="markDay">Today</span></div><div class="muted" style="font-size:12px">From your saved timetable</div></div>
+          </div>
+          <span class="pill info">MARK ANYTIME</span>
+        </div>
+        <div class="stack" id="markPeriods" style="margin-top:16px;gap:12px"></div>
+        <div class="split" style="flex-wrap:wrap;gap:12px;margin-top:4px;padding-top:12px;border-top:1px solid rgba(199,196,216,.2)">
+          <span class="pill ok" id="markUnsaved">All changes saved</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost" id="markAllBtn" type="button">Mark All Present</button>
+            <button class="btn btn-primary" id="saveAttBtn" type="button" disabled>Save Attendance</button>
+          </div>
+        </div>
+        <p class="muted" style="font-size:12px">Nothing is saved until you press Save Attendance. Marking a period again for the same date corrects the earlier entry.</p>
+        <div class="card" style="background:#eff4ff;box-shadow:none;padding:16px;margin-top:16px">
+          <div class="h3" style="font-size:16px">Mark a class not in my timetable</div>
+          <div class="muted" style="font-size:12px;margin-bottom:12px">For substitute, extra or guest classes. Choose the subject and time, then mark it.</div>
+          <div class="grid-2" style="gap:12px">
+            <div class="field"><label for="xSubj">Subject</label><select id="xSubj" class="input sel"></select></div>
+            <div class="field"><label for="xSubjOther">Or type a subject</label><input id="xSubjOther" class="input" maxlength="60" placeholder="e.g. Guest lecture"></div>
+            <div class="field"><label for="xStart">Start time</label><input id="xStart" type="time" class="input"></div>
+            <div class="field"><label for="xEnd">End time</label><input id="xEnd" type="time" class="input"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+            <button class="btn btn-primary" type="button" data-action="mark-extra" data-value="Present">Mark Present</button>
+            <button class="btn btn-ghost" type="button" data-action="mark-extra" data-value="Absent">Mark Absent</button>
+          </div>
+        </div>
+      </article>
+
+      <div class="stack" style="gap:20px">
+        <div class="summary-mini">
+          <div class="mini"><span class="k">Marked today</span><div><span class="v" id="sumMarked">0</span> <span class="k">Periods</span></div></div>
+          <div class="mini"><span class="k">Semester target</span><div><span class="v" style="color:var(--primary)" id="sumTarget">80.0%</span> <span class="k">Min</span></div></div>
+          <div class="mini"><span class="k">Current attendance</span><div><span class="v" id="sumCurrent">0.0%</span></div></div>
+          <div class="mini"><span class="k">Safe bunks left</span><div><span class="v" style="color:#059669" id="sumSafe">0</span> <span class="k">Classes</span></div></div>
+        </div>
+
+        <article class="card">
+          <div class="section-head" style="gap:4px;padding-bottom:16px;border-bottom:1px solid rgba(199,196,216,.2)">
+            <div class="h3" style="font-size:18px">Recent Attendance Records</div>
+            <div class="muted" style="font-size:12px">Most recent period entries</div>
+          </div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table>
+              <thead><tr><th>Subject</th><th>Date &amp; Time</th><th>Status</th></tr></thead>
+              <tbody id="recentBody"></tbody>
+            </table>
+          </div>
+          <div class="split" style="justify-content:center;margin-top:14px">
+            <button class="btn-link" data-view="history">View full semester ledger →</button>
+          </div>
+        </article>
+      </div>
+    </div>
+    <div class="grid-2">
+      <article class="card stack" style="gap:14px">
+        <div class="section-head" style="gap:4px">
+          <div class="h3" style="font-size:18px">Schedule changes for this date</div>
+          <div class="muted" style="font-size:12px">Cancel, replace or add a class for the selected date only. Your weekly timetable does not change.</div>
+        </div>
+        <div id="chgList" class="stack" style="gap:8px"></div>
+        <form id="chgForm" class="card stack" style="padding:16px;background:#eff4ff;box-shadow:none;gap:12px" novalidate>
+          <div class="grid-2" style="gap:12px">
+            <div class="field"><label for="chgType">What changed?</label>
+              <select id="chgType" class="input sel">
+                <option value="cancel">Cancel a timetable period</option>
+                <option value="replace">Replace subject, teacher or timing</option>
+                <option value="extra">Add an extra class</option>
+                <option value="pt">Add a PT or activity period</option>
+              </select></div>
+            <div class="field" id="chgPeriodWrap"><label for="chgPeriod">Timetable period</label><select id="chgPeriod" class="input sel"></select></div>
+            <div class="field" id="chgSubjWrap"><label for="chgSubject" id="chgSubjLabel">New subject (optional)</label><input id="chgSubject" class="input" maxlength="60" list="subjOptions" placeholder="Type or pick a subject"></div>
+            <div class="field" id="chgTeacherWrap"><label for="chgTeacher">Teacher (optional)</label><input id="chgTeacher" class="input" maxlength="60" placeholder="Who handled the class"></div>
+            <div class="field" id="chgTimeWrap"><span class="muted" id="chgTimeLabel" style="font-size:12px;font-weight:600">Start and end time</span>
+              <div style="display:flex;gap:8px"><input id="chgStart" type="time" class="input" aria-label="Start time"><input id="chgEnd" type="time" class="input" aria-label="End time"></div></div>
+            <div class="field" id="chgCountedWrap"><label for="chgCounted">Counts toward attendance?</label>
+              <select id="chgCounted" class="input sel"><option value="Yes">Yes, count it</option><option value="No">No, record only</option></select></div>
+            <div class="field" style="grid-column:1/-1"><label for="chgNote">Note (optional)</label><input id="chgNote" class="input" maxlength="60" placeholder="e.g. Teacher on leave"></div>
+          </div>
+          <div><button class="btn btn-primary" id="chgSave" type="submit">Save change for this date</button></div>
+        </form>
+        <datalist id="subjOptions"></datalist>
+      </article>
+
+      <article class="card stack" style="gap:14px">
+        <div class="section-head" style="gap:4px">
+          <div class="h3" style="font-size:18px">Holidays and non-working days</div>
+          <div class="muted" style="font-size:12px">A holiday is never counted as absent and does not change your percentage.</div>
+        </div>
+        <div id="holCurrent" hidden></div>
+        <form id="holForm" class="stack" style="gap:12px" novalidate>
+          <div class="grid-2" style="gap:12px">
+            <div class="field"><label for="holType">Type</label><select id="holType" class="input sel"><option>College holiday</option><option>Non-working day</option></select></div>
+            <div class="field"><label for="holNote">Reason (optional)</label><input id="holNote" class="input" maxlength="60" placeholder="e.g. Pongal"></div>
+          </div>
+          <div><button class="btn btn-primary" type="submit">Mark this date as a holiday</button></div>
+        </form>
+        <div id="holList" class="stack" style="gap:8px"></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ 2b. MY TIMETABLE ============ -->
+  <section class="view" id="timetable" aria-label="My timetable">
+    <div class="section-head" style="gap:6px">
+      <span class="pill info" style="align-self:flex-start;font-size:11px;letter-spacing:.55px;text-transform:uppercase">Setup</span>
+      <div class="h1">My Timetable</div>
+      <p class="muted" style="max-width:672px">Build your own college timetable: days, periods, breaks and subjects. It is saved to your Google Sheet under your register number, so it stays after you reopen the site.</p>
+    </div>
+
+
+    <article class="card stack" style="gap:12px">
+      <div class="h3" style="font-size:18px">Step 1 · My subjects</div>
+      <div class="muted" style="font-size:12px">Add the subjects your college uses. Saved subjects are reused when you build your periods.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="subjInput" class="input" style="flex:1;min-width:180px" placeholder="e.g. Data Structures" maxlength="60" aria-label="Subject name">
+        <button class="btn btn-primary" id="subjBtn" type="button">Add subject</button>
+        <button class="btn btn-ghost" id="subjCancel" type="button" hidden>Cancel</button>
+      </div>
+      <div id="subjList" class="stack" style="gap:8px"></div>
+    </article>
+
+    <article class="card stack" style="gap:16px">
+      <div class="h3" style="font-size:18px">Step 2 · Periods for each day</div>
+      <div class="seg-toggle" id="dayTabs" role="group" aria-label="Choose a day"></div>
+      <div class="split" style="flex-wrap:wrap;gap:8px">
+        <span class="pill ok" id="dayStatus">Saved</span>
+        <div class="row-cell" style="gap:8px;flex-wrap:wrap">
+          <select id="copyFrom" class="input sel" style="width:auto;padding:8px 36px 8px 12px" aria-label="Copy periods from another day"></select>
+          <button class="btn btn-ghost" id="copyBtn" type="button" style="padding:8px 12px;font-size:12px">Copy</button>
+        </div>
+      </div>
+      <div id="dayRows" class="stack" style="gap:10px"></div>
+
+      <form id="periodForm" class="card" style="padding:16px;background:#eff4ff;box-shadow:none" novalidate>
+        <div class="h3" style="font-size:16px" id="pFormTitle">Add a period</div>
+        <div class="grid-2" style="margin-top:12px;gap:12px">
+          <div class="field">
+            <label for="pType">Type</label>
+            <select id="pType" class="input sel">
+              <option value="class">Class (subject)</option>
+              <option value="break">Break</option>
+            </select>
+          </div>
+          <div class="field" id="pSubjWrap">
+            <label for="pSubj">Subject</label>
+            <select id="pSubj" class="input sel"></select>
+          </div>
+          <div class="field">
+            <label for="pStart">Start time</label>
+            <input id="pStart" class="input" type="time" required>
+          </div>
+          <div class="field">
+            <label for="pEnd">End time</label>
+            <input id="pEnd" class="input" type="time" required>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-primary" type="submit" id="pAddBtn">Add period</button>
+          <button class="btn btn-ghost" type="button" id="pCancelBtn" hidden>Cancel edit</button>
+        </div>
+      </form>
+
+      <div class="split" style="flex-wrap:wrap;gap:12px">
+        <button class="btn btn-ghost" id="clearDayBtn" type="button">Clear this day</button>
+        <button class="btn btn-ghost" id="saveAllBtn" type="button" style="padding:14px 24px">Save all changes</button>
+        <button class="btn btn-primary" id="saveDayBtn" type="button" style="padding:14px 24px">Save this day</button>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ 3. CALCULATE ============ -->
+  <section class="view" id="calculate" aria-label="Smart attendance calculator">
+    <div class="section-head">
+      <span class="pill info" style="align-self:flex-start">AI Predictive Planner</span>
+      <div class="h1" style="font-size:32px;line-height:40px;letter-spacing:-.8px">Smart Attendance<br>Calculator</div>
+      <p class="muted">Simulate upcoming sessions, monitor bunk margins, and keep your semester above the required threshold.</p>
+    </div>
+
+    <div class="alert info" style="max-width:560px;align-items:center;padding:17px;border-radius:16px;font-size:12px;background:linear-gradient(90deg,#e2dfff,rgba(234,221,255,.4) 50%,#eff4ff);border:1px solid rgba(53,37,205,.2)">
+      <svg width="38" height="42" viewBox="0 0 38 42" fill="none"><path d="M19 2l15 6v12c0 9-7 15-15 19-8-4-15-10-15-19V8z" fill="#c7c4d8" fill-opacity=".5"/><path d="M14 22l4 4 7-8" stroke="#3525cd" stroke-width="2"/></svg>
+      <div style="font-size:12px;color:var(--ink)"><b style="color:#3525cd">Pro-tip:</b> <span id="proTip">Log lectures to see personalised recommendations.</span></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="stack" style="gap:20px">
+        <article class="card">
+          <div class="split" style="align-items:flex-start">
+            <div class="stack" style="gap:8px">
+              <div class="caps muted">Current standing</div>
+              <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap"><span class="standing-val" id="calcPct">0.0%</span><span class="muted" id="calcMeta">0 classes logged</span></div>
+            </div>
+            <span class="pill bad" id="calcBadge">Critical Action Needed</span>
+          </div>
+          <div class="stack" style="margin-top:16px;gap:6px">
+            <div class="split" style="font-size:11px;font-weight:700;letter-spacing:.55px;color:var(--muted)"><span>Progress</span><span style="color:var(--primary)" id="calcTargetLabel">Target: 80%</span></div>
+            <div class="track"><div class="fill" id="calcFill" style="width:0%"></div><div class="pin" id="calcPin" style="left:80%"></div></div>
+            <div class="split" style="font-size:12px;color:var(--muted)"><span id="calcDeficit">—</span><span class="caps muted-2" id="calcWeek">0 logged</span></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="stack" style="gap:16px">
+            <div>
+              <div class="h3" style="font-size:18px">Target Minimum Attendance</div>
+              <div class="muted" style="font-size:12px">Adjust your required bar to recalibrate buffer allowances and recovery plans.</div>
+            </div>
+            <div class="target-opts">
+              <button class="target" data-action="target" data-value="75"><span class="n">75%</span><span class="t">Bare minimum</span></button>
+              <button class="target on" data-action="target" data-value="80"><span class="n">80%</span><span class="t">College rule</span></button>
+              <button class="target" data-action="target" data-value="85"><span class="n">85%</span><span class="t">Honors buffer</span></button>
+              <button class="target" data-action="target" data-value="90"><span class="n">90%</span><span class="t">Dean's list</span></button>
+            </div>
+          </div>
+          <div class="divider" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <span class="muted" style="font-size:12px">Exam hall admittance threshold is <b>80.0%</b>.</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="stack" style="gap:20px">
+        <article class="card" style="position:relative;overflow:hidden">
+          <div class="stack" style="gap:16px;position:relative">
+            <div class="split" style="align-items:flex-start">
+              <div class="row-cell">
+                <span style="width:36px;height:40px;border-radius:12px;background:var(--ok-bg);border:1px solid var(--ok-line);display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#059669" stroke-width="1.6"><path d="M9 1l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V4z"/></svg></span>
+                <div><div class="h3" style="font-size:18px;line-height:24px">Classes You Can<br>Safely Miss</div><div class="caps muted">Bunk buffer / safe margin</div></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:16px;align-items:center">
+              <div class="figure" id="safeCount">0</div>
+              <div class="muted" style="font-size:14px;font-weight:600;line-height:20px">classes<br>remaining</div>
+            </div>
+            <div id="safeText" style="background:rgba(239,244,255,.7);border:1px solid rgba(199,196,216,.2);border-radius:12px;padding:14px 15px;font-size:14px;line-height:22px">—</div>
+            <div class="divider" style="margin-top:0;display:flex;flex-direction:column;gap:12px">
+              <div class="split" style="font-size:12px"><span class="muted">Post-bunk projected score:</span><span><b id="safePost">0.0%</b></span></div>
+              <div class="split" style="font-size:12px"><span class="muted">Impact of 1 additional bunk:</span><b id="safeImpact" style="color:var(--bad-ink)">—</b></div>
+              <div style="display:flex;gap:8px;padding-top:4px" id="safeSlots"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="stack" style="gap:16px">
+            <div class="split" style="align-items:flex-start">
+              <div class="row-cell">
+                <span style="width:26px;height:40px;border-radius:12px;background:var(--primary-soft);border:1px solid rgba(53,37,205,.2);display:grid;place-items:center"><svg width="20" height="12" viewBox="0 0 20 12" fill="none" stroke="#3525cd" stroke-width="1.8"><path d="M1 11l5-5 4 4 9-9"/></svg></span>
+                <div><div class="h3" style="font-size:18px;line-height:24px">Classes Needed to<br>Reach Target</div><div class="caps muted">Catch-up / recovery plan</div></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:16px;align-items:center">
+              <div class="figure" id="needCount">0</div>
+              <div class="muted" style="font-size:14px;font-weight:600;line-height:20px">needed<br>consecutively</div>
+            </div>
+            <div style="background:#eff4ff;border:1px solid rgba(199,196,216,.2);border-radius:12px;padding:17px;display:flex;flex-direction:column;gap:14px">
+              <div class="split">
+                <div style="font-size:12px;font-weight:700" id="simLabel">Simulate next 4 classes attended:</div>
+                <b id="simOut" style="color:var(--primary);font-size:18px">—</b>
+              </div>
+              <input type="range" class="slider" id="simSlider" min="0" max="10" value="4" aria-label="Classes to simulate">
+              <div class="split" style="font-size:11px;font-weight:700;letter-spacing:.55px;color:var(--muted)"><span>0</span><span>5</span><span>10 classes</span></div>
+            </div>
+            <div class="divider" style="margin-top:0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+              <div style="font-size:12px;line-height:18px" id="simStatus">—</div>
+              <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" data-action="planner">Add to Planner</button>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <article class="card" style="padding:0;overflow:hidden">
+      <div style="padding:24px;border-bottom:1px solid rgba(199,196,216,.2)" class="split">
+        <div class="section-head" style="gap:4px">
+          <div class="h3" style="font-size:18px">Subject-Level Target Simulator</div>
+          <div class="muted" style="font-size:12px">Current attendance and action items per subject.</div>
+        </div>
+      </div>
+      <div class="table-wrap" style="border:0;border-radius:0">
+        <table style="min-width:680px">
+          <thead><tr><th>Subject</th><th>Attended / Total</th><th>Current %</th><th>Status</th><th style="text-align:right">Action</th></tr></thead>
+          <tbody id="calcSubjects"></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ 4. HISTORY ============ -->
+  <section class="view" id="history" aria-label="Attendance history and analytics">
+    <div class="card">
+      <div class="section-head" style="gap:8px">
+        <div class="split" style="justify-content:flex-start;flex-wrap:wrap;gap:8px;font-size:11px;font-weight:700;letter-spacing:.55px;text-transform:uppercase">
+          <span style="color:var(--primary)">Academics</span><span class="muted-2">›</span><span class="muted">Current semester</span><span class="muted-2">›</span><span style="color:var(--ink)">History &amp; Logs</span>
+        </div>
+        <div class="h1">Attendance History &amp;<br>Analytics</div>
+        <p class="muted">Monthly breakdown, weekly trends, and the full attendance log.</p>
+      </div>
+      <div class="filters" style="margin-top:20px">
+        <div class="select"><select class="input sel" id="histSem" aria-label="Semester"></select></div>
+        <div class="select"><select class="input sel" id="histMonth" aria-label="Month"></select></div>
+        <div class="select"><select class="input sel" id="histSubject" aria-label="Subject"></select></div>
+        <div class="field"><label for="histFrom">From date</label><input id="histFrom" class="input" type="date"></div>
+        <div class="field"><label for="histTo">To date</label><input id="histTo" class="input" type="date"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-soft" style="flex:1" data-action="export-xlsx">Download Excel</button><button class="btn btn-soft" style="flex:1" data-action="export-pdf">Export to PDF</button></div>
+      </div>
+    </div>
+
+    <article class="card">
+      <div class="stack" style="gap:24px">
+        <div class="section-head" style="gap:8px;padding-bottom:20px;border-bottom:1px solid var(--line)">
+          <div class="row-cell"><span style="width:32px;height:40px;border-radius:12px;background:var(--primary-soft);display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3525cd" stroke-width="1.6"><path d="M2 14l4-5 3 3 7-8"/></svg></span>
+            <div><div class="h2">Monthly Attendance<br>Summary</div><div class="muted" style="font-size:12px">Latest three months</div></div></div>
+          <span class="pill info" style="align-self:flex-start;font-size:11px"><span class="d" style="background:var(--primary)"></span>Term standard: 80% mandatory</span>
+        </div>
+        <div class="sum" id="monthCards"></div>
+      </div>
+    </article>
+
+    <article class="card stack" style="gap:20px">
+      <div class="section-head" style="gap:4px">
+        <div class="eyebrow" style="font-size:12px;letter-spacing:.48px">Charts</div>
+        <div class="h3" style="font-size:18px">Attendance trends</div>
+        <div class="muted" style="font-size:12px">Built from your saved records for the semester selected above. The dashed line is the 80% requirement.</div>
+      </div>
+      <div class="stack" style="gap:8px"><b style="font-size:14px">Overall attendance trend</b><div id="chartOverall"></div></div>
+      <div class="stack" style="gap:8px"><b style="font-size:14px">Subject-wise trend</b><div class="split" style="flex-wrap:wrap;gap:12px;font-size:12px" id="chartLegend"></div><div id="chartSubjects"></div></div>
+      <div class="grid-2" style="gap:20px">
+        <div class="stack" style="gap:8px"><b style="font-size:14px">Weekly attendance</b><div id="chartWeekly"></div></div>
+        <div class="stack" style="gap:8px"><b style="font-size:14px">Monthly attendance</b><div id="chartMonthly"></div></div>
+      </div>
+    </article>
+
+    <article class="card" style="background:rgba(239,244,255,.6)">
+      <div class="stack" style="gap:24px">
+        <div class="split" style="align-items:flex-start;flex-wrap:wrap;gap:12px">
+          <div class="section-head" style="gap:4px">
+            <div class="eyebrow" style="font-size:12px;letter-spacing:.48px">Trend analysis</div>
+            <div class="h3" style="font-size:18px">Weekly Attendance Rate Trends</div>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;font-weight:700;letter-spacing:.55px;color:var(--muted)">
+            <span style="display:inline-flex;gap:6px;align-items:center"><i style="width:9px;height:12px;border-radius:6px;background:var(--ok)"></i>Safe (&gt;82%)</span>
+            <span style="display:inline-flex;gap:6px;align-items:center"><i style="width:9px;height:12px;border-radius:6px;background:var(--warn)"></i>Caution (80–82%)</span>
+            <span style="display:inline-flex;gap:6px;align-items:center"><i style="width:9px;height:12px;border-radius:6px;background:var(--bad)"></i>At risk (&lt;80%)</span>
+          </div>
+        </div>
+        <div class="bars" id="weeklyBars" aria-label="Weekly attendance bar chart"></div>
+      </div>
+    </article>
+
+    <section class="stack" style="gap:16px">
+      <div class="section-head" style="gap:4px">
+        <div class="h2">Subject-wise Attendance Status</div>
+        <div class="muted" style="font-size:12px">Measured against the 80% statutory requirement</div>
+      </div>
+      <div class="subj-grid" id="subjectCards"></div>
+    </section>
+
+    <article class="card" style="padding:0;overflow:hidden">
+      <div style="padding:21px" class="stack">
+        <div class="section-head" style="gap:4px">
+          <div class="h3">Detailed Attendance Log</div>
+          <div class="muted" style="font-size:12px" id="logSubtitle">Roll-call history</div>
+        </div>
+        <div class="seg-toggle" role="tablist">
+          <button class="on" data-action="log-mode" data-value="all">All records</button>
+          <button data-action="log-mode" data-value="absent">Only absent</button>
+          <button data-action="log-mode" data-value="present">Only present</button>
+        </div>
+      </div>
+      <div class="table-wrap" style="border:0;border-top:1px solid var(--line);border-radius:0">
+        <table style="min-width:620px">
+          <thead><tr><th>Date &amp; Day</th><th>Subject</th><th>Time</th><th>Register No.</th><th>Status</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;border-top:1px solid var(--line)">
+        <span class="muted" style="font-size:12px" id="logCount">Showing 0 records</span>
+        <div class="pager">
+          <button class="btn btn-ghost" style="padding:4px 13px;font-size:12px" id="logPrev" data-action="log-page" data-value="-1">Previous</button>
+          <span class="btn btn-primary" style="padding:3px 12px;font-size:12px" id="logPage">1</span>
+          <button class="btn btn-ghost" style="padding:4px 13px;font-size:12px" id="logNext" data-action="log-page" data-value="1">Next</button>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ 5. PROFILE SETUP ============ -->
+  <section class="view" id="profile" aria-label="Student profile setup">
+    <div class="section-head" style="gap:6px">
+      <span class="pill info" style="align-self:flex-start;font-size:11px;letter-spacing:.55px;text-transform:uppercase">Academic profile setup • Onboarding</span>
+      <div class="h1">Student Profile Setup</div>
+      <p class="muted" style="max-width:672px">Configure your college credentials and course schedule to enable automated 80% minimum attendance threshold alerts.</p>
+    </div>
+
+    <div class="card" style="background:linear-gradient(90deg,rgba(226,223,255,.4),rgba(220,233,255,.4));border-color:rgba(53,37,205,.1)">
+      <div class="row-cell" style="align-items:flex-start">
+        <span style="width:36px;height:36px;border-radius:12px;background:#4f46e5;display:grid;place-items:center;flex-shrink:0"><svg width="13" height="17" viewBox="0 0 13 17" fill="none" stroke="#fff" stroke-width="1.6"><path d="M6.5 1l5 2.5v6c0 3-2.5 5-5 6.5-2.5-1.5-5-3.5-5-6.5v-6z"/></svg></span>
+        <div class="stack" style="gap:4px">
+          <div class="h3" style="font-size:18px;font-weight:600">Smart Timetable Sync</div>
+          <p class="muted" style="font-size:14px;line-height:22.75px">Your saved profile is stored in your Google Sheet, so attendance and targets follow you across devices.</p>
+        </div>
+      </div>
+    </div>
+
+    <form id="profileForm" class="form-grid" novalidate>
+      <div class="stack" style="gap:24px">
+        <article class="card" style="padding:25px">
+          <div class="split" style="padding-bottom:17px;border-bottom:1px solid var(--line);align-items:flex-start">
+            <div class="row-cell"><span style="width:8px;height:24px;border-radius:999px;background:var(--primary)"></span><div class="h3" style="font-size:18px">Academic Identity</div></div>
+            <span class="pill info" style="font-size:11px;letter-spacing:.55px;white-space:normal">Official record</span>
+          </div>
+          <div class="stack" style="gap:20px;margin-top:20px">
+            <div class="field">
+              <label for="pName">Student Full Name <em>*</em></label>
+              <div class="input-icon"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="#777587" stroke-width="1.4"><circle cx="7.5" cy="5" r="3"/><path d="M2 14c1-3 3-4 5.5-4s4.5 1 5.5 4"/></svg><input id="pName" class="input" autocomplete="name" required></div>
+            </div>
+            <div class="field">
+              <label for="pEmail">Email Address <em>*</em></label>
+              <div class="input-icon"><svg width="15" height="12" viewBox="0 0 15 12" fill="none" stroke="#777587" stroke-width="1.4"><rect x="1" y="1" width="13" height="10" rx="2"/><path d="M1.5 2l6 4.5L13.5 2"/></svg><input id="pEmail" class="input" type="email" autocomplete="email" required></div>
+            </div>
+            <div class="field">
+              <label for="pReg">Register Number / Roll No <em>*</em></label>
+              <div class="input-icon"><svg width="15" height="12" viewBox="0 0 15 12" fill="none" stroke="#777587" stroke-width="1.4"><rect x="1" y="1" width="13" height="10" rx="2"/><path d="M4 5h7M4 8h4"/></svg><input id="pReg" class="input mono" style="text-transform:uppercase" required></div>
+            </div>
+            <div class="stack" id="pwWrap" style="gap:20px">
+              <div class="field">
+                <label for="pPass">Create a password (at least 8 characters) <em>*</em></label>
+                <input id="pPass" type="password" class="input" autocomplete="new-password">
+              </div>
+              <div class="field">
+                <label for="pPass2">Confirm password <em>*</em></label>
+                <input id="pPass2" type="password" class="input" autocomplete="new-password">
+              </div>
+            </div>
+            <div class="field">
+              <label for="pCollege">College / University Name <em>*</em></label>
+              <input id="pCollege" class="input" autocomplete="organization" placeholder="e.g. Anna University" required>
+            </div>
+            <div class="field">
+              <label for="pCourse">Course / Program <em>*</em></label>
+              <div class="select"><select id="pCourse" class="input sel"></select></div>
+            </div>
+            <div class="field" id="pCourseOtherWrap" hidden>
+              <label for="pCourseOther">Your course name <em>*</em></label>
+              <input id="pCourseOther" class="input" placeholder="e.g. B.Sc Nursing">
+            </div>
+            <div class="field">
+              <label for="pDept">Department / Branch <em>*</em></label>
+              <div class="select"><select id="pDept" class="input sel"></select></div>
+            </div>
+            <div class="field" id="pDeptOtherWrap" hidden>
+              <label for="pDeptOther">Your department name <em>*</em></label>
+              <input id="pDeptOther" class="input" placeholder="e.g. Biotechnology">
+            </div>
+          </div>
+        </article>
+
+        <article class="card" style="padding:25px">
+          <div class="split" style="padding-bottom:17px;border-bottom:1px solid var(--line);align-items:flex-start">
+            <div class="row-cell"><span style="width:8px;height:24px;border-radius:999px;background:#39b8fd"></span><div class="h3" style="font-size:18px">Cohort &amp; Timetable</div></div>
+          </div>
+          <div class="stack" style="gap:20px;margin-top:20px">
+            <div class="field">
+              <label for="pAcadYear">Academic Year <em>*</em></label>
+              <input id="pAcadYear" class="input" placeholder="e.g. 2026-2027" required>
+            </div>
+            <div class="field">
+              <label for="pYear">Current Year of Study <em>*</em></label>
+              <div class="select"><select id="pYear" class="input sel"></select></div>
+            </div>
+            <div class="field">
+              <label for="pSem">Semester <em>*</em></label>
+              <div class="select"><select id="pSem" class="input sel"></select></div>
+            </div>
+            <div class="field">
+              <label for="pClass">Class / Batch <em>*</em></label>
+              <input id="pClass" class="input" placeholder="e.g. CS-A" required>
+            </div>
+            <div class="field">
+              <label for="pSection">Section <em>*</em></label>
+              <input id="pSection" class="input" placeholder="e.g. Sec 1" required>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <aside class="stack sticky-side" style="gap:24px">
+        <div class="live">
+          <div class="split" style="position:relative"><span class="chip">Live preview</span></div>
+          <div class="stack" style="gap:6px;position:relative;margin-top:16px">
+            <div class="initials" id="prevInitials">--</div>
+            <div style="font-weight:700;font-size:18px;letter-spacing:-.45px;margin-top:10px" id="prevName">Your name</div>
+            <div class="sub" id="prevReg">REGISTER NO.</div>
+          </div>
+          <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,.2);padding-top:9px;position:relative">
+            <div class="meta"><span>Program:</span><b id="prevProgram">—</b></div>
+            <div class="meta"><span>Cohort:</span><b id="prevCohort">—</b></div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:20px">
+          <label class="checkline"><input type="checkbox" checked>Auto-populate the semester course list based on department</label>
+        </div>
+      </aside>
+
+      <div class="card" style="padding:25px;grid-column:1/-1">
+        <div class="stack" style="gap:12px;align-items:stretch">
+          <button class="btn btn-primary" type="submit" style="width:100%;padding:14px 32px;border-radius:12px;background:linear-gradient(90deg,#3525cd,#4f46e5)">Save Profile &amp; Continue to Dashboard</button>
+          <div class="muted" style="font-size:12px;text-align:center" id="profileHint">Profile is saved to your Google Sheet.</div>
+          <button class="btn btn-ghost" type="button" data-action="prof-load" style="width:100%">Refresh my saved data</button>
+          <button class="btn btn-ghost" id="logoutBtn" type="button" style="width:100%;margin-top:8px" hidden>Log out</button>
+          <button class="btn btn-soft" id="backToLogin" type="button" style="width:100%;margin-top:8px">I already have an account: log in</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="stack" style="gap:20px;margin-top:8px">
+      <article class="card stack" style="gap:12px">
+        <div class="h3" style="font-size:18px">Appearance</div>
+        <div class="muted" style="font-size:12px">Choose how AttendSmart looks on this device. Your choice is remembered when you reopen the site.</div>
+        <div class="seg-toggle" role="group" aria-label="Theme">
+          <button type="button" data-action="theme" data-value="light">Light</button>
+          <button type="button" data-action="theme" data-value="dark">Dark</button>
+          <button type="button" data-action="theme" data-value="system">Same as device</button>
+        </div>
+      </article>
+
+      <article class="card stack" style="gap:14px">
+        <div class="h3" style="font-size:18px">Attendance reminders</div>
+        <label class="checkline"><input type="checkbox" id="remOn">Show a reminder in the app when I have not marked today</label>
+        <label class="checkline"><input type="checkbox" id="remEmail">Also email me (once a day, only if I have not marked attendance)</label>
+        <div class="field" style="max-width:260px"><label for="remTime">Reminder time</label><input id="remTime" type="time" class="input"></div>
+        <div><button class="btn btn-primary" id="remSave" type="button">Save reminder settings</button></div>
+        <p class="muted" style="font-size:12px">Email reminders are sent by a scheduled job set up once by the app owner (see the setup notes). They are never sent on Sundays or holidays.</p>
+      </article>
+
+      <article class="card stack" style="gap:14px">
+        <div class="h3" style="font-size:18px">Semester</div>
+        <div class="muted" style="font-size:12px" id="semCurrent"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div class="field" style="min-width:180px"><label for="newSem">Move to semester</label><select id="newSem" class="input sel"></select></div>
+          <button class="btn btn-primary" id="semMoveBtn" type="button">Start this semester</button>
+        </div>
+        <p class="muted" style="font-size:12px">Earlier semesters stay saved. Choose a semester in Attendance History to view its records and charts.</p>
+      </article>
+
+      <article class="card stack" style="gap:12px">
+        <div class="h3" style="font-size:18px">Install the app</div>
+        <div class="muted" style="font-size:12px">Add AttendSmart to your home screen and open it like an app. Use the install button when your browser offers it, or use the browser menu: "Add to Home screen" on iPhone, "Install app" on Android Chrome.</div>
+        <div><button class="btn btn-soft" id="installBtn" type="button" hidden>Install AttendSmart</button></div>
+      </article>
+    </div>
+  </section>
+
+</main>
+
+<!-- Mobile bottom navigation -->
+<nav class="bottomnav" aria-label="Bottom navigation">
+  <button class="navlink" data-view="dashboard">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 6.5L7.5 1 14 6.5V14H9.5v-4h-4v4H1z"/></svg>Home</button>
+  <button class="navlink" data-view="mark">
+    <svg width="20" height="16" viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 8l5 5 11-11"/></svg>Mark</button>
+  <button class="navlink" data-view="timetable">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="13" height="12" rx="2"/><path d="M1 6h13M5 0v3M10 0v3"/></svg>Timetable</button>
+  <button class="navlink" data-view="calculate">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="13" height="13" rx="2"/><path d="M4 5h7M4 9h2M8 9h3M4 12h7"/></svg>Calc</button>
+  <button class="navlink" data-view="history">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="7"/><path d="M8 4v4l3 2"/></svg>History</button>
+  <button class="navlink" data-view="profile">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="4.5" r="3"/><path d="M1 13.5c1-3 3.2-4 6-4s5 1 6 4"/></svg>Profile</button>
+</nav>
+
+<div id="authGate" class="auth-gate" hidden>
+  <div class="card auth-card">
+    <div class="brand"><span class="brand-mark"><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><path d="M1 13V4l7-3 7 3v9" stroke="#fff" stroke-width="1.6"/><path d="M5 13V8h6v5" stroke="#fff" stroke-width="1.6"/></svg></span>AttendSmart</div>
+    <div class="h2">Log in</div>
+    <p class="muted" style="font-size:13px">Use your register number and password. Your timetable and attendance are private to you.</p>
+    <div class="alert info" id="authMsg" hidden></div>
+    <form id="loginForm" class="stack" style="gap:14px" novalidate>
+      <div class="field"><label for="lReg">Register Number</label><input id="lReg" class="input mono" style="text-transform:uppercase" autocomplete="username" required></div>
+      <div class="field"><label for="lPass">Password</label><input id="lPass" type="password" class="input" autocomplete="current-password" required></div>
+      <button class="btn btn-primary" type="submit" style="width:100%">Log in</button>
+    </form>
+    <div class="split" style="justify-content:center"><span class="muted" style="font-size:12px">New student?</span></div>
+    <button class="btn btn-soft" id="gotoCreate" type="button" style="width:100%">Create an account</button>
+    <button class="btn-link" id="forgotLink" type="button" data-action="forgot-open">Forgot password?</button>
+    <div id="forgotPanel" class="stack" style="gap:12px" hidden>
+      <div class="h3" style="font-size:16px">Reset your password</div>
+      <form id="forgotStep1" class="stack" style="gap:12px" novalidate>
+        <div class="field"><label for="fReg">Register Number</label><input id="fReg" class="input mono" style="text-transform:uppercase" autocomplete="username"></div>
+        <button class="btn btn-soft" type="submit" style="width:100%">Email me a 6-digit code</button>
+      </form>
+      <form id="forgotStep2" class="stack" style="gap:12px" novalidate hidden>
+        <div class="field"><label for="fCode">6-digit code from your email</label><input id="fCode" class="input mono" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
+        <div class="field"><label for="fPass">New password (at least 8 characters)</label><input id="fPass" type="password" class="input" autocomplete="new-password"></div>
+        <div class="field"><label for="fPass2">Confirm new password</label><input id="fPass2" type="password" class="input" autocomplete="new-password"></div>
+        <button class="btn btn-primary" type="submit" style="width:100%">Change password</button>
+      </form>
+      <button class="btn-link" type="button" data-action="forgot-close">Back to log in</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="printReport" class="print-only" aria-hidden="true"></div>
+
+<script>
+/* ============================================================
+   CONFIGURATION
+   ============================================================ */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhrlefmpMegr-t_SicG5_-sL6wxOJVa68u8_vpt7TcOUDL16GwnyS7NjzznTTlbDWM/exec";
+const CACHE_KEY = "attendsmart:v2";
+const TOKEN_KEY = "attendsmart:token";
+const VIEWS = ["dashboard", "mark", "timetable", "calculate", "history", "profile"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const RING_C = 2 * Math.PI * 76;
+const LOG_PAGE_SIZE = 5;
+const MAX_PERIODS = 20;
+const SUBJECT_MAX = 60;
+const THEME_KEY = "attendsmart:theme";
+const REMIND_SHOWN_KEY = "attendsmart:remindShown";
+const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+const CHART_COLORS = ["#3525cd", "#10b981", "#f59e0b", "#ef4444", "#0ea5e9"];
+
+/* ============================================================
+   STATE (Google Sheets is the source of truth; this is a working copy)
+   ============================================================ */
+const state = {
+  student: null,      // { name, regNo, email, course, department, year, cls, section, semester }
+  subjects: [],       // subject names this student added
+  timetable: {},      // saved periods: { Monday: [{ type:"class"|"break", start, end, subject }], ... }
+  drafts: {},         // unsaved edits per day, same shape as timetable
+  records: [],        // { date, time, endTime, period, subject, status }
+  target: 80,
+  markDate: "",
+  setupDay: "Monday",
+  editIndex: -1,      // period being edited (index in the day's list), -1 when adding
+  subjEdit: "",       // subject being renamed, "" when adding
+  logMode: "all",
+  logPage: 1,
+  histMonth: "",
+  histSubject: "all",
+  histFrom: "",
+  histTo: "",
+  token: "",
+  creating: false,
+  holidays: [],      // { date, type, note }
+  changes: [],       // one-day changes: { date, ref ("P3" or "X50"), change, subject, teacher, start, end, counted, note }
+  settings: { reminders: "off", reminderTime: "19:00", reminderEmail: "off" },
+  viewSem: "",       // semester being viewed; "" means the current semester
+  attDraft: {}       // Present/Absent choices not saved yet: { date: { period: status } }
+};
+let profileDirty = false;
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, "0");
+const isoOf = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const todayISO = () => isoOf(new Date());
+
+function parseISO(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function addDays(iso, n) {
+  const d = parseISO(iso);
+  d.setDate(d.getDate() + n);
+  return isoOf(d);
+}
+function fmtDate(iso, opts) {
+  return parseISO(iso).toLocaleDateString("en-US", opts || { month: "short", day: "numeric", year: "numeric" });
+}
+function dayName(iso) {
+  return DAYS[(parseISO(iso).getDay() + 6) % 7] || "";   // "" on Sunday
+}
+function to12h(t) {
+  if (!t) return "—";
+  const [h, m] = String(t).split(":").map(Number);
+  if (isNaN(h)) return t;
+  const ap = h >= 12 ? "PM" : "AM";
+  return pad(((h + 11) % 12) + 1) + ":" + pad(m) + " " + ap;
+}
+function timeChip(t) {
+  const p = to12h(t).split(" ");
+  return '<div class="time-chip">' + esc(p[0]) + '<span style="font-size:10px;opacity:.8">' + esc(p[1] || "") + "</span></div>";
+}
+function hhmm(v) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(v == null ? "" : v));
+  return m ? pad(Number(m[1])) + ":" + m[2] : "";
+}
+function uniq(a) { return [...new Set(a)]; }
+function pct(a, t) { return t ? (a * 100) / t : 0; }
+function fmtPct(x) { return x.toFixed(1) + "%"; }
+function band(p) { return p < 80 ? "bad" : p <= 82 ? "warn" : "ok"; }
+function bandWord(b) { return b === "ok" ? "Safe range" : b === "warn" ? "Caution zone" : "Attendance deficit"; }
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function initials(name) {
+  const w = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return "--";
+  return (w[0][0] + (w[1] ? w[1][0] : "")).toUpperCase();
+}
+function statsOf(recs) {
+  const total = recs.length;
+  const attended = recs.filter(r => r.status === "Present").length;
+  return { total, attended, absent: total - attended, pct: pct(attended, total) };
+}
+// Classes that can be missed while staying at or above target t (percent)
+function maxSafeMiss(att, tot, t) {
+  if (!tot) return 0;
+  return Math.max(0, Math.floor(att * 100 / t - tot + 1e-9));
+}
+// Consecutive classes that must be attended to reach target t (percent)
+function neededConsec(att, tot, t) {
+  if (t >= 100) return Infinity;
+  const need = t * tot - 100 * att;
+  if (need <= 0) return 0;
+  return Math.ceil(need / (100 - t) - 1e-9);
+}
+function sortedRecords(recs) {
+  return recs.slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+function streakOf(recs) {
+  const s = sortedRecords(recs);
+  let n = 0;
+  for (let i = s.length - 1; i >= 0 && s[i].status === "Present"; i--) n++;
+  return n;
+}
+function monthsDesc() {
+  return [...new Set(semRecords().map(r => r.date.slice(0, 7)))].sort().reverse();
+}
+function subjectNames() {
+  return uniq([...state.subjects, ...state.records.map(r => r.subject)]).filter(Boolean);
+}
+function recordsToday() {
+  return state.records.filter(r => r.date === todayISO());
+}
+function groupBySubject(recs) {
+  const map = {};
+  recs.forEach(r => { (map[r.subject] = map[r.subject] || []).push(r); });
+  return map;
+}
+function getDayRows(day) {
+  return state.drafts[day] || state.timetable[day] || [];
+}
+function isDirty(day) {
+  return !!state.drafts[day];
+}
+function sortRows(rows) {
+  return rows.slice().sort((a, b) => a.start.localeCompare(b.start));
+}
+// Periods for a date: the saved weekly timetable with that date's one-day changes applied.
+// Class periods are numbered 1, 2, 3... in time order. Extra and PT periods use numbers 50 to 99.
+function periodsFor(iso) {
+  const day = dayName(iso);
+  if (!day) return [];
+  let n = 0;
+  const out = sortRows(state.timetable[day] || []).map(r => {
+    if (r.type === "break") return Object.assign({}, r, { period: 0 });
+    n++;
+    const base = Object.assign({}, r, { period: n });
+    const c = changeFor(iso, "P" + n);
+    if (!c) return base;
+    if (c.change === "cancel") return Object.assign(base, { cancelled: true, changed: true, counted: false, note: c.note });
+    if (c.change === "replace") return Object.assign(base, {
+      subject: c.subject || r.subject, teacher: c.teacher, start: c.start || r.start, end: c.end || r.end,
+      changed: true, note: c.note
+    });
+    return base;
+  });
+  state.changes.filter(c => c.date === iso && c.ref.charAt(0) === "X").forEach(c => out.push({
+    type: "class", kind: c.change, extra: true, period: Number(c.ref.slice(1)), subject: c.subject,
+    teacher: c.teacher, start: c.start, end: c.end, changed: true, counted: c.counted !== "No", note: c.note
+  }));
+  return sortRows(out);
+}
+function findRecord(date, period) {
+  if (!period) return null;
+  return state.records.find(r => r.date === date && r.period === period) || null;
+}
+function timetableUses(name) {
+  return DAYS.some(d => getDayRows(d).some(r => r.type === "class" && r.subject === name));
+}
+
+/* ============================================================
+   LOCAL CACHE (a copy only; Google Sheets is the source of truth)
+   ============================================================ */
+function loadCache() {
+  try { state.token = localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { /* ignore */ }
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return;
+    const c = JSON.parse(raw);
+    state.student = c.student || null;
+    state.subjects = Array.isArray(c.subjects) ? c.subjects : [];
+    state.timetable = c.timetable || {};
+    state.records = Array.isArray(c.records) ? c.records : [];
+    if (c.target) state.target = Number(c.target);
+    state.holidays = Array.isArray(c.holidays) ? c.holidays : [];
+    state.changes = Array.isArray(c.changes) ? c.changes : [];
+    if (c.settings) state.settings = Object.assign(state.settings, c.settings);
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+}
+function saveCache() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      student: state.student, subjects: state.subjects,
+      timetable: state.timetable, records: state.records, target: state.target,
+      holidays: state.holidays, changes: state.changes, settings: state.settings
+    }));
+  } catch (e) { /* ignore */ }
+}
+
+/* ============================================================
+   GOOGLE SHEETS API (JSONP: works from file:// and returns real results)
+   ============================================================ */
+// Counts saves so that a slower "read all data" reply can never overwrite a newer local change.
+let writeSeq = 0;
+let pendingWrites = 0;
+function jsonp(params, ms) {
+  if (/^(save|delete|register)/.test(params.action || "")) {
+    writeSeq++;
+    pendingWrites++;
+    return requestApi(params, ms).finally(function () { pendingWrites--; });
+  }
+  return requestApi(params, ms);
+}
+function requestApi(params, ms) {
+  // Requests that carry the session token go as a POST body, so the token never appears in a URL.
+  if (state.token && params.action !== "fetchResult") {
+    return postThenFetch(Object.assign({}, params, { token: state.token }));
+  }
+  return new Promise(function (resolve, reject) {
+    const cb = "asCb" + Date.now() + Math.floor(Math.random() * 1000);
+    const script = document.createElement("script");
+    let timer = null;
+
+    function finish(fn) {
+      clearTimeout(timer);
+      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+      fn();
+    }
+
+    window[cb] = function (data) {
+      finish(function () {
+        if (data && data.success) resolve(data);
+        else {
+          const err = new Error((data && data.error) || "Google Sheets rejected the request.");
+          err.pending = !!(data && data.pending);
+          reject(err);
+          if (data && data.loggedOut) clearSession();
+        }
+      });
+    };
+    timer = setTimeout(function () {
+      finish(function () { reject(new Error("Google Sheets did not respond. Check your connection and try again.")); });
+    }, ms || 20000);
+    script.onerror = function () {
+      finish(function () { reject(new Error("Could not reach Google Sheets. Check the Apps Script deployment.")); });
+    };
+
+    const query = Object.assign({}, params, { callback: cb });
+    script.src = SCRIPT_URL + "?" + new URLSearchParams(query).toString();
+    document.body.appendChild(script);
+  });
+}
+
+// Loads one student's data. Resolves true (found), false (no profile) or null (error).
+function loadFromSheet(regNo) {
+  const reg = regNo || (state.student && state.student.regNo);
+  if (!reg) return Promise.resolve(null);
+  const seq = writeSeq;
+  return jsonp({ action: "getData", registerNumber: reg })
+    .then(function (d) {
+      // A save started while this read was in flight: read again so nothing older overwrites it.
+      if (seq !== writeSeq || pendingWrites > 0) return loadFromSheet(reg);
+      const found = applySheetData(d);
+      return found;
+    })
+    .catch(function () { return null; });
+}
+
+function applySheetData(d) {
+  const hasProfile = Array.isArray(d.students) && d.students.length > 0;
+  if (hasProfile) {
+    state.student = mapStudent(d.students[d.students.length - 1]);
+    fillProfileForm(true);
+  }
+  state.subjects = uniq((d.subjects || []).map(r => String(r.Subject || "").trim()).filter(Boolean));
+
+  const tt = {};
+  DAYS.forEach(day => { tt[day] = []; });
+  (d.timetable || []).forEach(r => {
+    if (!tt[r.Day]) return;
+    tt[r.Day].push({
+      type: r.Type === "break" ? "break" : "class",
+      start: hhmm(r["Start Time"]),
+      end: hhmm(r["End Time"]),
+      subject: String(r.Subject || "")
+    });
+  });
+  DAYS.forEach(day => { tt[day] = sortRows(tt[day]); });
+  state.timetable = tt;
+
+  state.records = (d.attendance || []).map(r => ({
+    date: String(r["Attendance Date"]),
+    time: hhmm(r["Attendance Time"]),
+    endTime: hhmm(r["End Time"]),
+    period: Number(r["Period No"]) || 0,
+    subject: String(r.Subject || ""),
+    status: String(r.Status || ""),
+    semester: String(r.Semester || "") || curSem(),
+    counted: String(r.Counted || "Yes") !== "No",
+    kind: String(r.Kind || "regular")
+  }));
+  state.holidays = (d.holidays || []).map(h => ({
+    date: String(h.Date), type: String(h.Type || "College holiday"), note: String(h.Note || "")
+  }));
+  state.changes = (d.dayChanges || []).map(c => ({
+    date: String(c.Date), ref: String(c.Ref || "").toUpperCase(), change: String(c.Change || ""),
+    subject: String(c.Subject || ""), teacher: String(c.Teacher || ""),
+    start: hhmm(c["Start Time"]), end: hhmm(c["End Time"]),
+    counted: String(c.Counted || "Yes") === "No" ? "No" : "Yes", note: String(c.Note || "")
+  }));
+  const st = {};
+  (d.settings || []).forEach(s => { st[String(s.Setting)] = String(s.Value || ""); });
+  state.settings = {
+    reminders: st.reminders === "on" ? "on" : "off",
+    reminderEmail: st.reminderEmail === "on" ? "on" : "off",
+    reminderTime: hhmm(st.reminderTime) || "19:00"
+  };
+
+  saveCache();
+  renderAll();
+  return hasProfile;
+}
+
+function mapStudent(s) {
+  return {
+    name: s["Student Name"], regNo: s["Register Number"], email: s["Email"],
+    college: s["College Name"], academicYear: s["Academic Year"],
+    course: s["Course"], department: s["Department"], year: s["Year"],
+    cls: s["Class"], section: s["Section"], semester: s["Semester"]
+  };
+}
+
+function requireStudent() {
+  if (state.student && state.student.regNo) return true;
+  toast("Save your profile first (My Profile)", "err");
+  show("profile");
+  return false;
+}
+
+function sendSubjects() {
+  return jsonp({
+    action: "saveSubjects",
+    registerNumber: state.student.regNo,
+    subjects: JSON.stringify(state.subjects)
+  });
+}
+
+function sendDay(day, rows) {
+  const payload = rows.map(r => [r.type, r.start, r.end, r.type === "class" ? r.subject : ""]);
+  return jsonp({
+    action: "saveTimetableDay",
+    registerNumber: state.student.regNo,
+    day: day,
+    rows: JSON.stringify(payload)
+  });
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function toast(msg, type) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (type === "err" ? " err" : "");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { t.className = "toast"; }, 2800);
+}
+function showSuccess(msg) {
+  toast(msg);
+  const b = $("markBanner");
+  if (b) { $("markBannerText").textContent = msg; b.hidden = false; }
+}
+function showError(msg) { toast(msg, "err"); }
+
+// Present or Absent for one period. This only fills in a draft: nothing is saved until Save Attendance.
+function markPeriod(row, status, date) {
+  if (!requireStudent()) return;
+  const d = date || state.markDate || todayISO();
+  if (isHoliday(d)) { showError("This date is a holiday. Attendance is not counted."); return; }
+  if (d > todayISO()) { showError("You cannot mark attendance for a future date."); return; }
+  if (row.cancelled) { showError(row.subject + " is cancelled for this date"); return; }
+  setDraft(d, row.period, status);
+  renderMark();
+}
+
+/* ---------- Profile: course, department and year options ---------- */
+const COURSE_GROUPS = [
+  { group: "Engineering", courses: ["B.E.", "B.Tech", "M.E.", "M.Tech"],
+    depts: ["Computer Science & Engineering", "Information Technology", "Electronics & Communication", "Electrical & Electronics", "Mechanical Engineering", "Civil Engineering", "Artificial Intelligence & Data Science", "Other"] },
+  { group: "Science", courses: ["B.Sc", "M.Sc"],
+    depts: ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", "Statistics", "Other"] },
+  { group: "Commerce", courses: ["B.Com", "M.Com"],
+    depts: ["Commerce", "Accounting & Finance", "Banking & Insurance", "Corporate Secretaryship", "Other"] },
+  { group: "Arts & Humanities", courses: ["B.A.", "M.A."],
+    depts: ["English", "History", "Economics", "Political Science", "Sociology", "Psychology", "Other"] },
+  { group: "Computer Applications", courses: ["BCA", "MCA"],
+    depts: ["Computer Applications", "Software Engineering", "Data Science", "Other"] },
+  { group: "Management", courses: ["BBA", "MBA"],
+    depts: ["Management Studies", "Finance", "Marketing", "Human Resources", "Business Analytics", "Other"] },
+  { group: "Pharmacy", courses: ["B.Pharm", "M.Pharm"],
+    depts: ["Pharmaceutics", "Pharmacology", "Pharmacognosy", "Pharmaceutical Chemistry", "Other"] },
+  { group: "Architecture", courses: ["B.Arch", "M.Arch"],
+    depts: ["Architecture", "Urban Planning", "Other"] },
+  { group: "Other Programs", courses: ["Diploma", "Polytechnic", "Other Degree Programs", "Other"],
+    depts: ["General", "Other"] }
+];
+const GENERAL_DEPTS = ["General", "Other"];
+
+function allCourses() {
+  return COURSE_GROUPS.reduce((acc, g) => acc.concat(g.courses), []);
+}
+function deptsFor(course) {
+  const g = COURSE_GROUPS.find(x => x.courses.indexOf(course) !== -1);
+  return g ? g.depts : GENERAL_DEPTS;
+}
+function courseValue() {
+  const c = $("pCourse").value;
+  return c === "__other" ? $("pCourseOther").value.trim() : c;
+}
+function deptValue() {
+  const d = $("pDept").value;
+  return d === "__other" ? $("pDeptOther").value.trim() : d;
+}
+function populateCourseSelect(selected) {
+  const known = allCourses().indexOf(selected) !== -1;
+  $("pCourse").innerHTML = COURSE_GROUPS.map(g =>
+    '<optgroup label="' + esc(g.group) + '">' +
+    g.courses.map(c => '<option value="' + esc(c) + '">' + esc(c) + "</option>").join("") +
+    "</optgroup>").join("") +
+    '<option value="__other">Other (type my own)</option>';
+  if (known) $("pCourse").value = selected;
+  else if (selected) { $("pCourse").value = "__other"; $("pCourseOther").value = selected; }
+  $("pCourseOtherWrap").hidden = $("pCourse").value !== "__other";
+}
+function populateDeptSelect(course, selected) {
+  const list = deptsFor(course);
+  $("pDept").innerHTML = list.map(d => '<option value="' + esc(d) + '">' + esc(d) + "</option>").join("") +
+    '<option value="__other">Other (type my own)</option>';
+  if (selected && list.indexOf(selected) !== -1) $("pDept").value = selected;
+  else if (selected) { $("pDept").value = "__other"; $("pDeptOther").value = selected; }
+  else $("pDept").value = list[0];
+  onDeptChange();
+}
+function populateYearSem() {
+  const ord = ["1st", "2nd", "3rd", "4th", "5th", "6th"];
+  $("pYear").innerHTML = ord.map((o, i) => '<option value="' + (i + 1) + '">' + o + " Year</option>").join("");
+  $("pSem").innerHTML = Array.from({ length: 12 }, (_, i) => '<option value="' + (i + 1) + '">Semester ' + (i + 1) + "</option>").join("");
+}
+function onCourseChange() {
+  const c = $("pCourse").value;
+  $("pCourseOtherWrap").hidden = c !== "__other";
+  populateDeptSelect(c === "__other" ? "" : c, "");
+}
+function onDeptChange() {
+  $("pDeptOtherWrap").hidden = $("pDept").value !== "__other";
+}
+
+function readProfileForm() {
+  return {
+    studentName: $("pName").value.trim(),
+    registerNumber: $("pReg").value.trim().toUpperCase(),
+    email: $("pEmail").value.trim(),
+    collegeName: $("pCollege").value.trim(),
+    course: courseValue(),
+    department: deptValue(),
+    academicYear: $("pAcadYear").value.trim(),
+    year: $("pYear").value,
+    class: $("pClass").value.trim(),
+    section: $("pSection").value.trim(),
+    semester: $("pSem").value
+  };
+}
+function validateProfile(v) {
+  const required = ["studentName", "registerNumber", "email", "collegeName", "course", "department", "academicYear", "class", "section"];
+  if (required.some(k => !v[k])) return "Please fill in all required fields, including college, course and department.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) return "Enter a valid email address.";
+  if (!/^\d{4}\s*-\s*\d{2,4}$/.test(v.academicYear)) return "Academic year should look like 2026-2027.";
+  return "";
+}
+function fillProfileForm(force) {
+  if (profileDirty && !force) return;
+  const s = state.student;
+  if (!s) return;
+  $("pName").value = s.name || "";
+  $("pEmail").value = s.email || "";
+  $("pReg").value = s.regNo || "";
+  $("pCollege").value = s.college || "";
+  $("pAcadYear").value = s.academicYear || "";
+  populateCourseSelect(s.course || "");
+  populateDeptSelect(allCourses().indexOf(s.course) !== -1 ? s.course : "", s.department || "");
+  setSelect($("pYear"), s.year);
+  setSelect($("pSem"), s.semester);
+  $("pClass").value = s.cls || "";
+  $("pSection").value = s.section || "";
+  updatePreview();
+}
+
+function setSelect(sel, value) {
+  if (value == null || value === "") return;
+  const opt = [...sel.options].find(o => o.value === String(value) || o.text === String(value));
+  if (opt) sel.value = opt.value;
+}
+function updatePreview() {
+  const v = readProfileForm();
+  $("prevName").textContent = v.studentName || "Your name";
+  $("prevInitials").textContent = initials(v.studentName);
+  $("prevReg").textContent = v.registerNumber || "REGISTER NO.";
+  const prog = v.course.split(" (")[0];
+  $("prevProgram").textContent = prog + " (" + v.department.split(" ").map(w => w[0]).join("").slice(0, 4) + ")";
+  $("prevCohort").textContent = (v.year ? "Year " + v.year : "Year —") + " • " + (v.semester ? "Sem " + v.semester : "Sem —") + " • " + (v.class || "—");
+}
+
+/* ---------- Subjects ---------- */
+function clearSubjForm() {
+  state.subjEdit = "";
+  $("subjInput").value = "";
+  $("subjBtn").textContent = "Add subject";
+  $("subjCancel").hidden = true;
+}
+function startSubjEdit(name) {
+  state.subjEdit = name;
+  $("subjInput").value = name;
+  $("subjBtn").textContent = "Save subject";
+  $("subjCancel").hidden = false;
+  $("subjInput").focus();
+}
+function onSubjectSubmit() {
+  if (!requireStudent()) return;
+  const name = $("subjInput").value.trim().replace(/\s+/g, " ");
+  if (!name) { showError("Type a subject name first"); return; }
+  if (name.length > SUBJECT_MAX) { showError("Subject name is too long (max 60 characters)"); return; }
+  const others = state.subjects.filter(s => s !== state.subjEdit);
+  if (others.some(s => s.toLowerCase() === name.toLowerCase())) { showError("That subject is already in your list"); return; }
+
+  if (!state.subjEdit) {
+    state.subjects.push(name);
+    sendSubjects()
+      .then(() => { saveCache(); clearSubjForm(); renderAll(); toast("Subject added"); })
+      .catch(e => { showError(e.message); loadFromSheet(); });
+    return;
+  }
+
+  // Rename: update the subject everywhere it is used, then save those days.
+  const old = state.subjEdit;
+  state.subjects = state.subjects.map(s => s === old ? name : s);
+  const changed = DAYS.filter(d =>
+    (state.timetable[d] || []).some(r => r.subject === old) || (state.drafts[d] || []).some(r => r.subject === old));
+  changed.forEach(d => {
+    [state.timetable[d], state.drafts[d]].forEach(list => {
+      (list || []).forEach(r => { if (r.subject === old) r.subject = name; });
+    });
+  });
+  Promise.all([sendSubjects()].concat(changed.map(d => sendDay(d, sortRows(state.timetable[d] || [])))))
+    .then(() => { saveCache(); clearSubjForm(); renderAll(); toast("Subject renamed everywhere it is used"); })
+    .catch(e => { showError(e.message); loadFromSheet(); });
+}
+function deleteSubject(name) {
+  if (!requireStudent()) return;
+  if (timetableUses(name)) {
+    showError("“" + name + "” is used in your timetable. Remove or change those periods first.");
+    return;
+  }
+  if (!confirm("Delete the subject “" + name + "”?")) return;
+  state.subjects = state.subjects.filter(s => s !== name);
+  sendSubjects()
+    .then(() => { saveCache(); if (state.subjEdit === name) clearSubjForm(); renderAll(); toast("Subject deleted"); })
+    .catch(e => { showError(e.message); loadFromSheet(); });
+}
+
+/* ---------- Timetable: periods ---------- */
+function resetPeriodForm() {
+  state.editIndex = -1;
+  $("pFormTitle").textContent = "Add a period";
+  $("pAddBtn").textContent = "Add period";
+  $("pCancelBtn").hidden = true;
+  $("pStart").value = "";
+  $("pEnd").value = "";
+  $("pType").value = "class";
+  toggleSubjField();
+}
+function toggleSubjField() {
+  $("pSubjWrap").hidden = $("pType").value === "break";
+}
+function populateSubjectSelect(selected) {
+  const sel = $("pSubj");
+  sel.innerHTML = state.subjects.length
+    ? state.subjects.map(s => '<option value="' + esc(s) + '">' + esc(s) + "</option>").join("")
+    : '<option value="">Add subjects in Step 2 first</option>';
+  if (selected) sel.value = selected;
+}
+function onPeriodSubmit(e) {
+  e.preventDefault();
+  const day = state.setupDay;
+  const type = $("pType").value;
+  const start = $("pStart").value;
+  const end = $("pEnd").value;
+  const subject = type === "class" ? $("pSubj").value : "";
+  if (!start || !end) { showError("Enter both start and end time"); return; }
+  if (start >= end) { showError("End time must be after the start time"); return; }
+  if (type === "class" && !subject) { showError("Choose a subject. Add subjects in Step 2 first."); return; }
+
+  const rows = getDayRows(day).slice();
+  const clash = rows.find((r, i) => i !== state.editIndex && start < r.end && r.start < end);
+  if (clash) {
+    showError("Clashes with " + (clash.type === "break" ? "a break" : clash.subject) +
+      " (" + to12h(clash.start) + " – " + to12h(clash.end) + ")");
+    return;
+  }
+  if (state.editIndex < 0 && rows.length >= MAX_PERIODS) {
+    showError("A day can have at most " + MAX_PERIODS + " periods");
+    return;
+  }
+  const item = { type: type, start: start, end: end, subject: subject };
+  if (state.editIndex >= 0) rows[state.editIndex] = item; else rows.push(item);
+  state.drafts[day] = sortRows(rows);
+  resetPeriodForm();
+  renderSetup();
+  toast("Updated " + day + ". Press Save this day to keep it.");
+}
+function startEditPeriod(i) {
+  const r = getDayRows(state.setupDay)[i];
+  if (!r) return;
+  state.editIndex = i;
+  $("pType").value = r.type;
+  toggleSubjField();
+  populateSubjectSelect(r.subject);
+  $("pStart").value = r.start;
+  $("pEnd").value = r.end;
+  $("pFormTitle").textContent = "Edit period";
+  $("pAddBtn").textContent = "Update period";
+  $("pCancelBtn").hidden = false;
+  $("periodForm").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function deletePeriod(i) {
+  const day = state.setupDay;
+  const rows = getDayRows(day).filter((_, k) => k !== i);
+  state.drafts[day] = rows;
+  resetPeriodForm();
+  renderSetup();
+  toast("Period removed. Press Save this day to keep it.");
+}
+function copyFromDay() {
+  const from = $("copyFrom").value;
+  const rows = getDayRows(from);
+  if (!rows.length) { showError(from + " has no periods to copy"); return; }
+  state.drafts[state.setupDay] = rows.map(r => Object.assign({}, r));
+  renderSetup();
+  toast("Copied from " + from + ". Press Save this day to keep it.");
+}
+function clearDay() {
+  state.drafts[state.setupDay] = [];
+  resetPeriodForm();
+  renderSetup();
+  toast("Day cleared. Press Save this day to keep it.");
+}
+function validateRows(rows) {
+  if (rows.length > MAX_PERIODS) return "A day can have at most " + MAX_PERIODS + " periods.";
+  for (const r of rows) {
+    if (!r.start || !r.end) return "Every period needs a start and end time.";
+    if (r.start >= r.end) return "End time must be after the start time (" + to12h(r.start) + ").";
+    if (r.type === "class" && !r.subject) return "Every class period needs a subject.";
+  }
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i].start < rows[i - 1].end) return "Periods overlap around " + to12h(rows[i].start) + ".";
+  }
+  return "";
+}
+function saveDay(day) {
+  if (!requireStudent()) return;
+  const rows = sortRows(getDayRows(day));
+  const err = validateRows(rows);
+  if (err) { showError(err); return; }
+  const btn = $("saveDayBtn");
+  btn.disabled = true;
+  sendDay(day, rows)
+    .then(() => {
+      state.timetable[day] = rows.map(r => Object.assign({}, r));
+      delete state.drafts[day];
+      state.subjects = uniq([...state.subjects, ...rows.filter(r => r.type === "class").map(r => r.subject)]);
+      saveCache();
+      resetPeriodForm();
+      renderAll();
+      toast(day + " saved to Google Sheets.");
+    })
+    .catch(e => showError(e.message))
+    .finally(() => { btn.disabled = false; });
+}
+
+/* ============================================================
+   TIMETABLE UPLOAD AND AUTOMATIC READING
+   The file is sent to Apps Script, which asks Google Gemini to read it.
+   Nothing is saved until the student presses "Save all changes".
+   ============================================================ */
+const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const UPLOAD_MIME = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+};
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function setTtStatus(msg, kind) {
+  const box = $("ttStatus");
+  box.hidden = false;
+  box.className = "alert " + (kind === "ok" ? "ok" : "info");
+  $("ttStatusText").textContent = msg;
+}
+
+function readFileBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = () => reject(new Error("Could not read the file from your device."));
+    r.readAsDataURL(file);
+  });
+}
+
+// Waits for the uploaded file to be stored, then asks for the reading (retries a few times).
+function pollExtraction(uploadId, tries) {
+  return jsonp({ action: "extractTimetable", registerNumber: state.student.regNo, uploadId: uploadId }, 90000)
+    .then(d => d.days, err => {
+      if (err.pending && tries < 8) {
+        setTtStatus("Waiting for the upload to finish… (" + (tries + 1) + "/8)");
+        return wait(4000).then(() => pollExtraction(uploadId, tries + 1));
+      }
+      if (err.pending) throw new Error("The upload did not reach Google Drive. Try again.");
+      throw err;
+    });
+}
+
+function applyExtraction(days) {
+  const names = DAYS.filter(d => days[d] && days[d].length);
+  if (!names.length) throw new Error("No timetable was found in the file.");
+  names.forEach(d => {
+    state.drafts[d] = sortRows(days[d].map(r => Object.assign({}, r)));
+  });
+  state.subjects = uniq([...state.subjects, ...names.reduce((acc, d) =>
+    acc.concat(state.drafts[d].filter(r => r.type === "class").map(r => r.subject)), [])]);
+  state.setupDay = names[0];
+  resetPeriodForm();
+  renderAll();
+  setTtStatus("Read " + names.length + " day(s): " + names.join(", ") +
+    ". Check every period in Step 3, fix anything wrong, then press Save all changes.", "ok");
+  toast("Timetable read. Please check it before saving.");
+}
+
+// Saves every day that has unsaved changes, in order. Stops at the first error.
+function saveAllDays() {
+  if (!requireStudent()) return;
+  const days = DAYS.filter(isDirty);
+  if (!days.length) { toast("Nothing new to save"); return; }
+  const btn = $("saveAllBtn");
+  btn.disabled = true;
+  days.reduce((chain, day) => chain.then(() => {
+    const rows = sortRows(getDayRows(day));
+    const err = validateRows(rows);
+    if (err) throw new Error(day + ": " + err);
+    return sendDay(day, rows).then(() => {
+      state.timetable[day] = rows.map(r => Object.assign({}, r));
+      delete state.drafts[day];
+      state.subjects = uniq([...state.subjects, ...rows.filter(r => r.type === "class").map(r => r.subject)]);
+      saveCache();
+    });
+  }), Promise.resolve())
+    .then(() => { resetPeriodForm(); toast("All changes saved to Google Sheets."); })
+    .catch(e => showError(e.message))
+    .finally(() => { btn.disabled = false; renderAll(); });
+}
+
+/* ============================================================
+   LOGIN, SESSIONS AND ACCOUNTS
+   ============================================================ */
+// Sends a POST (body is hidden from the web address), then collects the result with fetchResult.
+function newRequestId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}
+function postThenFetch(params) {
+  const requestId = newRequestId();
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    body: JSON.stringify(Object.assign({}, params, { requestId: requestId }))
+  }).then(() => pollResult(requestId, 0));
+}
+function pollResult(requestId, tries) {
+  return wait(1000)
+    .then(() => jsonp({ action: "fetchResult", requestId: requestId }, 15000))
+    .catch(err => {
+      if (err.pending && tries < 15) return pollResult(requestId, tries + 1);
+      if (err.pending) throw new Error("The server did not answer. Please try again.");
+      throw err;
+    });
+}
+
+function saveToken(t) {
+  state.token = t || "";
+  try {
+    if (t) localStorage.setItem(TOKEN_KEY, t);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch (e) { /* storage blocked */ }
+}
+function authMsg(msg) {
+  const el = $("authMsg");
+  el.textContent = msg || "";
+  el.hidden = !msg;
+}
+function toggleAuthUI() {
+  const loggedIn = !!state.token;
+  $("authGate").hidden = loggedIn || state.creating;
+  $("pwWrap").hidden = loggedIn;
+  $("backToLogin").hidden = loggedIn;
+  $("logoutBtn").hidden = !loggedIn;
+}
+// Removes the session and every copy of the student's data from this browser.
+function clearSession() {
+  saveToken("");
+  state.creating = false;
+  state.student = null;
+  state.subjects = [];
+  state.timetable = {};
+  state.drafts = {};
+  state.records = [];
+  state.holidays = [];
+  state.changes = [];
+  state.settings = { reminders: "off", reminderTime: "19:00", reminderEmail: "off" };
+  state.attDraft = {};
+  state.viewSem = "";
+  try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* ignore */ }
+  renderAll();
+  toggleAuthUI();
+}
+function onLoginSubmit(e) {
+  e.preventDefault();
+  const reg = $("lReg").value.trim().toUpperCase();
+  const pass = $("lPass").value;
+  if (!reg || !pass) { authMsg("Enter your register number and password."); return; }
+  authMsg("Logging in…");
+  postThenFetch({ action: "login", registerNumber: reg, password: pass })
+    .then(d => {
+      saveToken(d.token);
+      $("lPass").value = "";
+      authMsg("");
+      toggleAuthUI();
+      return loadFromSheet(reg).then(() => { show("dashboard"); toast("Welcome back"); });
+    })
+    .catch(err => authMsg(err.message));
+}
+function startCreateAccount() {
+  state.creating = true;
+  toggleAuthUI();
+  show("profile");
+}
+function leaveCreateAccount() {
+  state.creating = false;
+  toggleAuthUI();
+  show("dashboard");
+}
+
+/* ---------- Quick mark for classes not in the timetable ---------- */
+function populateExtraSubjects() {
+  const sel = $("xSubj");
+  const current = sel.value;
+  const names = subjectNames();
+  sel.innerHTML = names.length
+    ? names.map(n => '<option value="' + esc(n) + '">' + esc(n) + "</option>").join("")
+    : '<option value="">Type a subject below</option>';
+  if (current && names.indexOf(current) !== -1) sel.value = current;
+}
+function markExtra(status) {
+  if (!requireStudent()) return;
+  const d = state.markDate || todayISO();
+  const subject = $("xSubjOther").value.trim() || $("xSubj").value;
+  const start = $("xStart").value;
+  const end = $("xEnd").value;
+  if (isHoliday(d)) { showError("This date is a holiday. Attendance is not counted."); return; }
+  if (d > todayISO()) { showError("You cannot mark attendance for a future date."); return; }
+  if (!subject) { showError("Choose a subject or type one"); return; }
+  if (!start || !end) { showError("Enter the start and end time"); return; }
+  if (start >= end) { showError("End time must be after the start time"); return; }
+  const period = nextExtraNo(d);
+  if (!period) { showError("Too many extra classes for this day"); return; }
+  const ref = "X" + period;
+  jsonp({ action: "saveDayChange", changeDate: d, ref: ref, change: "extra", subject: subject, start: start, end: end, counted: "Yes" })
+    .then(() => {
+      upsertChange({ date: d, ref: ref, change: "extra", subject: subject, teacher: "", start: hhmm(start), end: hhmm(end), counted: "Yes", note: "" });
+      setDraft(d, period, status);
+      saveCache();
+      $("xSubjOther").value = "";
+      $("xStart").value = "";
+      $("xEnd").value = "";
+      return saveAttendanceDay(d);
+    })
+    .catch(err => showError(err.message));
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function renderAll() {
+  renderAlerts();
+  renderAppSettings();
+  renderDashboard();
+  renderSchedule();
+  renderMark();
+  renderSetup();
+  renderCalc();
+  renderHistory();
+  checkReminder();
+}
+
+function renderDashboard() {
+  const recs = countedRecords(), s = statsOf(recs), t = state.target, p = s.pct, b = band(p), has = s.total > 0;
+
+  $("dashName").textContent = state.student ? state.student.name : "Set up your profile";
+  $("dashInitials").textContent = state.student ? initials(state.student.name) : "--";
+  $("dashReg").textContent = "Reg: " + (state.student ? state.student.regNo : "—");
+  $("dashProgram").textContent = state.student
+    ? state.student.course + " • Year " + state.student.year + " • Sem " + state.student.semester
+    : "Open My Profile to register";
+  const tr = recordsToday();
+  $("dashToday").textContent = tr.length ? tr.length + " period(s) marked today" : "No periods marked today";
+
+  // Hero
+  const hp = $("heroPct");
+  hp.textContent = fmtPct(p);
+  hp.className = "big " + (has ? b : "");
+  const pill = $("heroPill");
+  pill.className = "pill " + (has ? b : "neutral");
+  pill.textContent = !has ? "No data yet" : b === "ok" ? "Safe Zone - Eligible for Exams" : b === "warn" ? "Borderline - Watch closely" : "Shortage risk";
+
+  const cutoff = addDays(todayISO(), -7);
+  const prior = recs.filter(r => r.date < cutoff);
+  const delta = $("heroDelta");
+  if (has && prior.length) {
+    const d = p - pct(statsOf(prior).attended, prior.length);
+    delta.className = "pill " + (d >= 0 ? "ok" : "bad");
+    delta.textContent = (d >= 0 ? "+" : "") + d.toFixed(1) + "% vs. earlier weeks";
+  } else {
+    delta.className = "pill neutral";
+    delta.textContent = "Trend appears after a week of data";
+  }
+
+  const n = maxSafeMiss(s.attended, s.total, t), k = neededConsec(s.attended, s.total, t);
+  $("heroText").textContent = !has
+    ? "Log your first period to see your attendance."
+    : p >= t
+      ? "Outstanding standing! You meet the " + t + "% target."
+      : "You are " + (t - p).toFixed(1) + " points below your " + t + "% target.";
+  $("heroBuffer").innerHTML = !has
+    ? "Buffer and recovery guidance will appear here."
+    : p >= t
+      ? "Buffer: you can safely miss up to <b>" + n + " more class(es)</b> and stay at " + t + "%."
+      : "Recovery: attend the next <b>" + k + " class(es) in a row</b> to reach " + t + "%.";
+
+  // Ring
+  const arc = $("ringArc");
+  arc.style.strokeDasharray = RING_C;
+  arc.style.strokeDashoffset = RING_C * (1 - Math.min(p, 100) / 100);
+  arc.setAttribute("class", "arc " + (has ? b : "bad"));
+  $("ringPct").textContent = Math.round(p) + "%";
+  $("ringCount").textContent = s.attended + " / " + s.total;
+  $("heroTarget").textContent = t.toFixed(1) + "%";
+
+  // Stat cards
+  $("statConducted").textContent = s.total;
+  $("statAttended").textContent = s.attended;
+  $("statAttendedPct").textContent = fmtPct(p);
+  $("statAbsent").textContent = s.absent;
+  $("statAbsentPct").textContent = fmtPct(has ? 100 - p : 0);
+  const streak = streakOf(recs);
+  $("statStreak").textContent = streak;
+  $("statStreakPill").hidden = streak < 5;
+
+  // Subject-wise: total, attended, absent and percentage
+  const bySub = groupBySubject(recs);
+  const names = subjectNames();
+  $("subjectPerf").innerHTML = names.length
+    ? names.map(name => {
+        const st = statsOf(bySub[name] || []), sb = st.total ? band(st.pct) : "bad";
+        return '<div class="perf-row"><div class="split"><b>' + esc(name) + '</b><span class="c-' + sb + '" style="font-weight:700">' +
+          (st.total ? fmtPct(st.pct) : "No classes") + '</span></div>' +
+          '<div class="muted" style="font-size:12px">Total ' + st.total + " • Attended " + st.attended + " • Absent " + st.absent + "</div>" +
+          '<div class="progress ' + sb + '"><span style="width:' + Math.min(st.pct, 100) + '%"></span></div></div>';
+      }).join("")
+    : '<div class="muted" style="font-size:12px">No subjects yet. Add them in My Timetable.</div>';
+}
+
+// Dashboard version: read-only status with a link to Mark Attendance.
+function periodCard(r, d, extra) {
+  const st = statusFor(d, r.period);
+  return '<div class="sched' + (r.cancelled ? " cancelled" : "") + '"><div class="row-cell" style="align-items:flex-start">' + timeChip(r.start) +
+    '<div class="stack" style="gap:6px"><span class="tag" style="align-self:flex-start">' + (r.extra ? "Extra class" : "Period " + r.period) + "</span>" +
+    '<div class="h3' + (r.cancelled ? " strike" : "") + '">' + esc(r.subject) + "</div>" +
+    (r.changed ? '<span class="pill warn" style="font-size:10px;align-self:flex-start">' + (r.cancelled ? "Cancelled today" : "Changed for today") + "</span>" : "") +
+    '<span class="pill ' + (st === "Present" ? "ok" : st === "Absent" ? "bad" : "neutral") + '">' + esc(st || "Not marked") + "</span>" +
+    '<div class="muted" style="font-size:12px">' + esc(to12h(r.start)) + " – " + esc(to12h(r.end)) + "</div></div></div>" +
+    '<button class="btn btn-soft" data-view="mark" style="align-self:flex-start;padding:8px 14px;font-size:12px">' + (st ? "Review" : "Mark") + "</button></div>" + (extra || "");
+}
+
+// One period on the Mark Attendance page: shows its draft or saved status and two buttons.
+function markCard(r, d, hol, future) {
+  const tags = [];
+  if (r.extra) tags.push(r.kind === "pt" ? "PT / activity" : "Extra class");
+  if (r.changed && !r.extra) tags.push(r.cancelled ? "Cancelled for this date" : "Changed for this date");
+  if (r.extra && r.counted === false) tags.push("Not counted");
+  const st = statusFor(d, r.period);
+  const saved = findRecord(d, r.period);
+  const dr = draftFor(d, r.period);
+  const dirty = dr !== undefined && (!saved || saved.status !== dr);
+  const off = hol || future || r.cancelled ? " disabled" : "";
+  return '<div class="sched' + (r.cancelled ? " cancelled" : "") + '">' +
+    '<div class="row-cell" style="align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">' +
+    '<div class="row-cell" style="align-items:flex-start">' + timeChip(r.start) +
+    '<div class="stack" style="gap:6px"><span class="tag" style="align-self:flex-start">' + (r.extra ? "Extra " + r.period : "Period " + r.period) + "</span>" +
+    '<div class="h3' + (r.cancelled ? " strike" : "") + '">' + esc(r.subject) + "</div>" +
+    (r.teacher ? '<div class="muted" style="font-size:12px">Teacher: ' + esc(r.teacher) + "</div>" : "") +
+    (tags.length ? '<div class="row-cell" style="gap:6px;flex-wrap:wrap">' + tags.map(t => '<span class="pill warn" style="font-size:10px">' + esc(t) + "</span>").join("") + "</div>" : "") +
+    '<span class="pill ' + (st === "Present" ? "ok" : st === "Absent" ? "bad" : "neutral") + '">' + esc(st || "Not marked") + (dirty ? " • unsaved" : "") + "</span>" +
+    '<div class="muted" style="font-size:12px">' + esc(to12h(r.start)) + " – " + esc(to12h(r.end)) + "</div></div></div>" +
+    '<div class="seg">' +
+    '<button type="button" data-action="mark-period" data-period="' + r.period + '" data-date="' + d + '" data-value="Present" class="' + (st === "Present" ? "on" : "") + '"' + off + ">Present</button>" +
+    '<button type="button" data-action="mark-period" data-period="' + r.period + '" data-date="' + d + '" data-value="Absent" class="' + (st === "Absent" ? "on" : "") + '"' + off + ">Absent</button>" +
+    "</div></div></div>";
+}
+
+function breakRow(r) {
+  return '<div class="dayrow brk" style="justify-content:center"><span class="pill warn">Break</span><b class="mono" style="font-size:13px">' +
+    esc(to12h(r.start)) + " – " + esc(to12h(r.end)) + '</b></div>';
+}
+function emptyCard(msg) {
+  return '<div class="sched"><div class="muted" style="font-size:13px">' + msg + '</div>' +
+    '<button class="btn btn-soft" data-view="timetable" style="align-self:flex-start">Open My Timetable</button></div>';
+}
+
+function renderSchedule() {
+  const t = todayISO();
+  $("schedDate").textContent = fmtDate(t, { weekday: "long", month: "short", day: "numeric" });
+  const list = $("schedList");
+  if (!state.student) { list.innerHTML = emptyCard("Save your profile to see today's classes."); return; }
+  if (!dayName(t)) { list.innerHTML = emptyCard("No classes on Sunday."); return; }
+  const rows = periodsFor(t);
+  if (!rows.length) { list.innerHTML = emptyCard("No periods set for " + dayName(t) + " yet."); return; }
+  list.innerHTML = rows.map(r => r.type === "break" ? breakRow(r) : periodCard(r, t)).join("");
+}
+
+function renderMark() {
+  populateExtraSubjects();
+  const d = state.markDate || todayISO();
+  $("markDateLabel").textContent = (d === todayISO() ? "Today, " : "") + fmtDate(d);
+  if ($("markDate").value !== d) $("markDate").value = d;
+  const day = dayName(d);
+  $("markDay").textContent = day || "Sunday";
+  const hol = holidayFor(d);
+  const future = d > todayISO();
+  $("markHoliday").hidden = !hol;
+  if (hol) {
+    $("markHoliday").innerHTML = "<b>" + esc(hol.type) + "</b>" + (hol.note ? " — " + esc(hol.note) : "") +
+      '<div class="muted" style="font-size:12px">This date is not counted. Attendance cannot be marked on it.</div>';
+  }
+  $("markFutureNote").hidden = !future;
+
+  const box = $("markPeriods");
+  if (!state.student) {
+    box.innerHTML = '<div class="muted" style="font-size:13px">Save your profile first, then build your timetable.</div>';
+  } else if (!day) {
+    box.innerHTML = '<div class="muted" style="font-size:13px">No classes on Sunday. Pick another date.</div>';
+  } else {
+    const rows = periodsFor(d);
+    box.innerHTML = rows.length
+      ? rows.map(r => r.type === "break" ? breakRow(r) : markCard(r, d, !!hol, future)).join("")
+      : '<div class="muted" style="font-size:13px">No periods for ' + day + '. <button class="btn-link" data-view="timetable">Set up My Timetable →</button></div>';
+  }
+
+  const unsaved = state.student ? unsavedCount(d) : 0;
+  $("markUnsaved").textContent = unsaved ? unsaved + " change(s) not saved yet" : "All changes saved";
+  $("markUnsaved").className = "pill " + (unsaved ? "warn" : "ok");
+  $("markAllBtn").disabled = !state.student || !periodsFor(d).some(isMarkable) || !!hol || future;
+  $("saveAttBtn").disabled = !state.student || !unsaved || !!hol || future;
+
+  const s = statsOf(countedRecords());
+  $("sumMarked").textContent = recordsToday().length;
+  $("sumTarget").textContent = state.target.toFixed(1) + "%";
+  $("sumCurrent").textContent = fmtPct(s.pct);
+  $("sumCurrent").className = "c-" + (s.total ? band(s.pct) : "bad");
+  $("sumSafe").textContent = maxSafeMiss(s.attended, s.total, state.target);
+
+  const recent = sortedRecords(semRecords()).reverse().slice(0, 5);
+  $("recentBody").innerHTML = recent.length
+    ? recent.map(r => {
+        const dt = fmtDate(r.date, { month: "short", day: "numeric" });
+        return '<tr><td><div class="row-cell"><span class="logo-tile">' + esc(initials(r.subject)) + '</span><div><b>' + esc(r.subject) +
+          '</b></div></div></td><td><b>' + esc(dt) + '</b><div class="muted" style="font-size:12px">' + esc(to12h(r.time)) + " – " + esc(to12h(r.endTime)) +
+          '</div></td><td><span class="pill ' + (r.status === "Present" ? "ok" : "bad") + '">' + esc(r.status) + "</span></td></tr>";
+      }).join("")
+    : '<tr><td colspan="3" class="muted" style="text-align:center">No records yet</td></tr>';
+
+  populateChangeForm(d);
+  renderChangeList(d);
+  renderHolidayBox(d);
+}
+
+function renderSetup() {
+  const day = state.setupDay;
+  $("dayTabs").innerHTML = DAYS.map(d =>
+    '<button class="' + (d === day ? "on" : "") + '" data-action="tt-day" data-value="' + d + '">' +
+    d.slice(0, 3) + (isDirty(d) ? " •" : "") + "</button>").join("");
+
+  const rows = getDayRows(day);
+  const dirty = isDirty(day);
+  $("dayStatus").textContent = dirty ? "Unsaved changes" : "Saved";
+  $("dayStatus").className = "pill " + (dirty ? "warn" : "ok");
+  $("dayRows").innerHTML = rows.length
+    ? rows.map((r, i) => {
+        const brk = r.type === "break";
+        return '<div class="dayrow' + (brk ? " brk" : "") + '"><span class="pill ' + (brk ? "warn" : "info") + '">' + (brk ? "Break" : "Class") + "</span>" +
+          '<b class="mono" style="font-size:13px">' + esc(to12h(r.start)) + " – " + esc(to12h(r.end)) + "</b>" +
+          '<span style="font-weight:600">' + (brk ? "Break time" : esc(r.subject)) + "</span>" +
+          '<div class="acts"><button class="mini-btn" data-action="pedit" data-value="' + i + '">Edit</button>' +
+          '<button class="mini-btn danger" data-action="pdel" data-value="' + i + '">Delete</button></div></div>';
+      }).join("")
+    : '<div class="muted" style="font-size:13px;text-align:center;padding:12px">No periods for ' + day + " yet. Add your first period below.</div>";
+
+  $("subjList").innerHTML = state.subjects.length
+    ? state.subjects.map(s =>
+        '<div class="subj-row"><b>' + esc(s) + '</b><div class="acts">' +
+        '<button class="mini-btn" data-action="subj-edit" data-value="' + esc(s) + '">Edit</button>' +
+        '<button class="mini-btn danger" data-action="subj-del" data-value="' + esc(s) + '">Delete</button></div></div>').join("")
+    : '<div class="muted" style="font-size:13px">No subjects yet. Add the subjects from your college.</div>';
+
+  $("copyFrom").innerHTML = DAYS.filter(d => d !== day)
+    .map(d => '<option value="' + d + '">Copy from ' + d + "</option>").join("");
+  populateSubjectSelect($("pSubj").value);
+}
+
+function renderCalc() {
+  const t = state.target, s = statsOf(countedRecords()), p = s.pct, has = s.total > 0;
+
+  $("calcPct").textContent = fmtPct(p);
+  $("calcMeta").textContent = s.attended + " attended of " + s.total + " classes";
+  const badge = $("calcBadge");
+  badge.className = "pill " + (p >= t && has ? "ok" : "bad");
+  badge.textContent = p >= t && has ? "On Track" : "Critical Action Needed";
+  $("calcFill").style.width = Math.min(p, 100) + "%";
+  $("calcFill").className = "fill " + (p >= t ? "ok" : p >= t - 5 ? "warn" : "");
+  $("calcPin").style.left = t + "%";
+  $("calcTargetLabel").textContent = "Target: " + t + "%";
+  const diff = p - t;
+  $("calcDeficit").innerHTML = has
+    ? (diff >= 0 ? "Surplus: " : "Deficit: ") + '<b class="c-' + (diff >= 0 ? "ok" : "bad") + '">' + (diff >= 0 ? "+" : "") + diff.toFixed(1) + "%</b> " + (diff >= 0 ? "above" : "below") + " target"
+    : "No classes logged yet";
+  $("calcWeek").textContent = s.total + " logged";
+
+  document.querySelectorAll('[data-action="target"]').forEach(btn => {
+    btn.classList.toggle("on", Number(btn.dataset.value) === t);
+  });
+
+  const n = maxSafeMiss(s.attended, s.total, t);
+  const post = pct(s.attended, s.total + 1);
+  $("safeCount").textContent = has ? n : 0;
+  $("safeText").innerHTML = !has
+    ? "Log classes to calculate your safe bunk margin."
+    : n > 0
+      ? "You can skip up to <b>" + n + " upcoming class(es)</b> and still stay at or above " + t + "%."
+      : "No safe bunks left at " + t + "%. Attend upcoming classes.";
+  $("safePost").textContent = has ? fmtPct(post) : "—";
+  $("safeImpact").textContent = has ? "-" + (p - post).toFixed(1) + "% drop" : "—";
+  $("safeSlots").innerHTML = [1, 2, 3].map(i =>
+    '<div class="mini-box ' + (n >= i ? "safe-box" : "risk-box") + '">Class ' + i + ':<br>' + (n >= i ? "Miss OK" : "Attend") + "</div>"
+  ).join("");
+
+  const k = neededConsec(s.attended, s.total, t);
+  $("needCount").textContent = has ? k : 0;
+
+  renderSim();
+
+  $("proTip").innerHTML = has
+    ? "Attend your next 2 classes to lift your overall score to <b>" + pct(s.attended + 2, s.total + 2).toFixed(1) + "%</b>!"
+    : "Log classes to see personalised recommendations.";
+
+  const bySub = groupBySubject(countedRecords());
+  $("calcSubjects").innerHTML = subjectNames().map(name => {
+    const st = statsOf(bySub[name] || []);
+    if (!st.total) {
+      return '<tr><td><b>' + esc(name) + '</b></td><td class="mono">0 / 0</td><td class="muted">—</td><td><span class="pill neutral">No classes yet</span></td><td style="text-align:right" class="muted">—</td></tr>';
+    }
+    const sb = band(st.pct);
+    const status = st.pct > 82 ? ["ok", "Comfortably safe"] : st.pct >= t ? ["warn", "Boundary edge"] : ["bad", "Deficit detected"];
+    const action = st.pct < t
+      ? '<span class="pill bad" style="text-transform:none;letter-spacing:0;font-size:12px">Must attend next ' + neededConsec(st.attended, st.total, t) + "</span>"
+      : '<span class="pill ok" style="text-transform:none;letter-spacing:0;font-size:12px">Can miss ' + maxSafeMiss(st.attended, st.total, t) + "</span>";
+    return '<tr><td><div class="row-cell"><span class="logo-tile">' + esc(initials(name)) + '</span><div><b>' + esc(name) + '</b></div></div></td>' +
+      '<td class="mono">' + st.attended + ' / ' + st.total + '</td>' +
+      '<td><div class="row-cell" style="gap:8px"><b class="c-' + sb + '">' + fmtPct(st.pct) + '</b><div class="progress ' + sb + '" style="width:64px;height:6px"><span style="width:' + Math.min(st.pct, 100) + '%"></span></div></div></td>' +
+      '<td><span class="pill ' + status[0] + '">' + status[1] + '</span></td>' +
+      '<td style="text-align:right">' + action + "</td></tr>";
+  }).join("");
+}
+
+function renderSim() {
+  const s = statsOf(countedRecords()), t = state.target, k = Number($("simSlider").value);
+  const proj = pct(s.attended + k, s.total + k);
+  $("simLabel").textContent = "Simulate next " + k + " classes attended:";
+  $("simOut").textContent = s.total ? fmtPct(proj) : "—";
+  $("simStatus").innerHTML = !s.total
+    ? "Log classes to run the simulator."
+    : proj >= t
+      ? 'Status: <b class="c-ok">Target requirement met</b>'
+      : 'Status: <b class="c-bad">Still below ' + t + "%</b>";
+}
+
+function renderHistory() {
+  // Month select
+  const months = monthsDesc();
+  if (!months.includes(state.histMonth)) state.histMonth = months[0] || "";
+  const ms = $("histMonth");
+  ms.innerHTML = months.length
+    ? months.map(m => '<option value="' + m + '">' + esc(fmtDate(m + "-01", { month: "long", year: "numeric" })) + "</option>").join("")
+    : '<option value="">No months yet</option>';
+  ms.value = state.histMonth;
+
+  // Subject select
+  const hs = $("histSubject");
+  const subs = subjectNames();
+  if (hs.options.length !== subs.length + 1) {
+    hs.innerHTML = '<option value="all">All subjects</option>' + subs.map(n => '<option value="' + esc(n) + '">' + esc(n) + "</option>").join("");
+  }
+  hs.value = state.histSubject;
+
+  // Monthly summary cards (latest three months)
+  const labels = ["Current focus", "Previous term", "Earlier term"];
+  $("monthCards").innerHTML = months.length
+    ? months.slice(0, 3).map((m, i) => {
+        const st = statsOf(countedRecords().filter(r => r.date.slice(0, 7) === m));
+        const b = band(st.pct);
+        return '<div class="sum-card ' + b + '"><div class="split"><div><div class="caps muted" style="text-transform:none;font-size:12px">' + labels[i] +
+          '</div><div class="h3">' + esc(fmtDate(m + "-01", { month: "long" })) + '</div></div><span class="pill ' + b + '" style="font-size:11px">' + bandWord(b) + '</span></div>' +
+          '<div style="display:flex;gap:8px;align-items:baseline"><span class="big2 c-' + b + '">' + Math.round(st.pct) + '%</span><span class="muted" style="font-size:12px">' + st.attended + ' of ' + st.total + ' attended</span></div>' +
+          '<div class="progress ' + b + '"><span style="width:' + Math.min(st.pct, 100) + '%"></span></div></div>';
+      }).join("")
+    : '<div class="muted">No monthly data yet.</div>';
+
+  // Weekly bars for the selected month
+  const monthRecs = countedRecords().filter(r => r.date.slice(0, 7) === state.histMonth);
+  let bars = "";
+  for (let w = 1; w <= 5; w++) {
+    const lo = (w - 1) * 7 + 1, hi = w === 5 ? 31 : w * 7;
+    const st = statsOf(monthRecs.filter(r => { const dd = Number(r.date.slice(8, 10)); return dd >= lo && dd <= hi; }));
+    const has = st.total > 0, b = has ? band(st.pct) : "";
+    bars += '<div class="bar"><div class="lbl mono ' + (has ? "c-" + b : "") + '">' + (has ? Math.round(st.pct) + "%" : "—") + '</div>' +
+      '<div class="track-col"><i class="tline"></i>' +
+      (has ? '<div class="fill ' + b + '" style="height:' + Math.max(2, (st.pct / 100) * 150) + 'px"></div>' : "") +
+      '</div><div class="lbl">W' + w + '<br><span class="muted-2" style="font-weight:600">' + lo + '–' + hi + "</span></div></div>";
+  }
+  $("weeklyBars").innerHTML = bars;
+
+  // Subject cards: total, attended, absent and percentage
+  const bySub = groupBySubject(countedRecords());
+  const shown = subs.filter(n => state.histSubject === "all" || n === state.histSubject);
+  $("subjectCards").innerHTML = shown.length
+    ? shown.map(name => {
+        const st = statsOf(bySub[name] || []), b = st.total ? band(st.pct) : "bad";
+        const act = !st.total
+          ? "No classes recorded yet"
+          : st.pct < state.target
+            ? "Must attend next " + neededConsec(st.attended, st.total, state.target) + " class(es) to reach " + state.target + "%"
+            : "Can safely miss " + maxSafeMiss(st.attended, st.total, state.target) + " more class(es)";
+        return '<article class="card subj-card" style="' + (b === "bad" && st.total ? "border:2px solid var(--bad-line)" : "") + '">' +
+          '<div class="split" style="align-items:flex-start"><div><div class="caps" style="color:var(--primary)">' + esc(initials(name)) + '</div><div class="h3">' + esc(name) + '</div></div>' +
+          '<span class="pill ' + b + '">' + (!st.total ? "No data" : b === "ok" ? "Above 82% Safe" : b === "warn" ? "80% – 82% Warning" : "Below 80% Danger") + '</span></div>' +
+          '<div style="display:flex;align-items:baseline;gap:12px;margin-top:8px"><span class="big3 c-' + b + '">' + (st.total ? fmtPct(st.pct) : "—") + '</span><span class="muted" style="font-weight:600">' + st.attended + ' / ' + st.total + ' attended</span></div>' +
+          '<div class="muted" style="font-size:12px">Total ' + st.total + " • Attended " + st.attended + " • Absent " + st.absent + "</div>" +
+          '<div class="progress ' + b + '"><span style="width:' + Math.min(st.pct, 100) + '%"></span></div>' +
+          '<div class="divider" style="font-size:12px;font-weight:600;margin-top:4px"><span class="c-' + b + '">' + esc(act) + "</span></div></article>";
+      }).join("")
+    : '<div class="muted" style="font-size:12px">No subject data yet. Add subjects in My Timetable.</div>';
+
+  // Log table
+  const dateFilter = !!(state.histFrom || state.histTo);
+  let rows = semRecords().filter(r => {
+    const inDate = dateFilter
+      ? (!state.histFrom || r.date >= state.histFrom) && (!state.histTo || r.date <= state.histTo)
+      : r.date.slice(0, 7) === state.histMonth;
+    return inDate && (state.histSubject === "all" || r.subject === state.histSubject);
+  });
+  const totalRows = rows.length;
+  if (state.logMode === "absent") rows = rows.filter(r => r.status === "Absent");
+  if (state.logMode === "present") rows = rows.filter(r => r.status === "Present");
+  rows = sortedRecords(rows).reverse();
+
+  const pages = Math.max(1, Math.ceil(rows.length / LOG_PAGE_SIZE));
+  state.logPage = Math.min(Math.max(1, state.logPage), pages);
+  const pageRows = rows.slice((state.logPage - 1) * LOG_PAGE_SIZE, state.logPage * LOG_PAGE_SIZE);
+  const regNo = state.student ? state.student.regNo : "—";
+
+  $("logBody").innerHTML = pageRows.length
+    ? pageRows.map(r => {
+        const wd = parseISO(r.date).toLocaleDateString("en-US", { weekday: "short" });
+        return '<tr><td><b>' + esc(fmtDate(r.date, { month: "short", day: "numeric" })) + ',<br>' + wd + '</b></td>' +
+          '<td><b>' + esc(r.subject) + '</b>' + (r.period ? '<div class="muted" style="font-size:12px">' + (r.kind === "pt" ? "PT / activity" : r.period >= 50 ? "Extra class" : "Period " + r.period) + (r.counted === false ? " • <b>Not counted</b>" : "") + '</div>' : "") + '</td>' +
+          '<td class="muted">' + esc(to12h(r.time)) + (r.endTime ? " – " + esc(to12h(r.endTime)) : "") + '</td>' +
+          '<td class="mono muted">' + esc(regNo) + '</td>' +
+          '<td><span class="pill ' + (r.status === "Present" ? "ok" : "bad") + '">' + esc(r.status) + '</span></td></tr>';
+      }).join("")
+    : '<tr><td colspan="5" class="muted" style="text-align:center">No records for this selection</td></tr>';
+
+  $("logCount").innerHTML = "Showing <b style=\"color:var(--ink)\">" + pageRows.length + " of " + rows.length + "</b> attendance records" +
+    (totalRows !== rows.length ? " (filtered from " + totalRows + ")" : "");
+  $("logPage").textContent = state.logPage + " / " + pages;
+  $("logPrev").disabled = state.logPage <= 1;
+  $("logNext").disabled = state.logPage >= pages;
+  renderHistoryExtras();
+}
+
+/* ============================================================
+   ATTENDANCE DRAFTS: mark by date, Mark All Present, one Save
+   Nothing is saved to Google Sheets until "Save Attendance" is pressed.
+   ============================================================ */
+function isMarkable(r) { return r.type === "class" && !r.cancelled; }
+function draftFor(date, period) {
+  const d = state.attDraft[date];
+  return d && d[period] !== undefined ? d[period] : undefined;
+}
+function statusFor(date, period) {
+  const dr = draftFor(date, period);
+  if (dr !== undefined) return dr;
+  const rec = findRecord(date, period);
+  return rec ? rec.status : "";
+}
+function setDraft(date, period, status) {
+  state.attDraft[date] = state.attDraft[date] || {};
+  state.attDraft[date][period] = status;
+}
+function unsavedCount(date) {
+  return periodsFor(date).filter(isMarkable).filter(r => {
+    const dr = draftFor(date, r.period);
+    if (dr === undefined) return false;
+    const rec = findRecord(date, r.period);
+    return !rec || rec.status !== dr;
+  }).length;
+}
+function isHoliday(date) { return !!holidayFor(date); }
+function holidayFor(date) { return state.holidays.find(h => h.date === date) || null; }
+
+function markAllPresent() {
+  if (!requireStudent()) return;
+  const d = state.markDate || todayISO();
+  if (isHoliday(d)) { showError("This date is a holiday. Attendance is not counted."); return; }
+  const rows = periodsFor(d).filter(isMarkable);
+  if (!rows.length) { showError("No periods to mark on this date"); return; }
+  rows.forEach(r => setDraft(d, r.period, "Present"));
+  renderMark();
+  toast("All periods set to Present. Change any to Absent, then press Save Attendance.");
+}
+
+// Sends every Present/Absent for the date in one request. Resolves when Sheets has saved it.
+function saveAttendanceDay(d) {
+  if (!state.student) return Promise.reject(new Error("Save your profile first (My Profile)."));
+  if (d > todayISO()) return Promise.reject(new Error("You cannot mark attendance for a future date."));
+  if (isHoliday(d)) return Promise.reject(new Error("This date is a holiday. Attendance is not counted."));
+  const items = periodsFor(d).filter(isMarkable)
+    .map(r => ({ r: r, s: statusFor(d, r.period) }))
+    .filter(x => x.s === "Present" || x.s === "Absent");
+  if (!items.length) return Promise.reject(new Error("Mark at least one period as Present or Absent first."));
+
+  const payload = items.map(x => ({
+    period: x.r.period,
+    subject: x.r.subject,
+    start: x.r.start,
+    end: x.r.end,
+    status: x.s,
+    kind: x.r.extra ? x.r.kind : "regular",
+    counted: x.r.counted === false ? "No" : "Yes"
+  }));
+  const btn = $("saveAttBtn");
+  if (btn) btn.disabled = true;
+  return jsonp({
+    action: "saveAttendanceBatch",
+    attendanceDate: d,
+    semester: curSem(),
+    rows: JSON.stringify(payload)
+  }).then(res => {
+    const periods = new Set(items.map(x => x.r.period));
+    state.records = state.records.filter(x => !(x.date === d && periods.has(x.period)));
+    items.forEach(x => state.records.push({
+      date: d, time: x.r.start, endTime: x.r.end, period: x.r.period, subject: x.r.subject,
+      status: x.s, semester: curSem(), counted: x.r.counted !== false, kind: x.r.extra ? x.r.kind : "regular"
+    }));
+    delete state.attDraft[d];
+    saveCache();
+    renderAll();
+    showSuccess("Saved " + items.length + " period(s) for " + fmtDate(d) + " (" + res.saved + " new, " + res.updated + " corrected).");
+    return res;
+  }).finally(() => { if (btn) btn.disabled = false; });
+}
+
+/* ============================================================
+   ONE-DAY SCHEDULE CHANGES (weekly timetable is never changed here)
+   ============================================================ */
+function changesFor(date) { return state.changes.filter(c => c.date === date); }
+function changeFor(date, ref) { return state.changes.find(c => c.date === date && c.ref === ref) || null; }
+function upsertChange(c) {
+  state.changes = state.changes.filter(x => !(x.date === c.date && x.ref === c.ref));
+  state.changes.push(c);
+}
+function removeChangeLocal(date, ref) {
+  state.changes = state.changes.filter(x => !(x.date === date && x.ref === ref));
+}
+function nextExtraNo(date) {
+  const used = state.changes.filter(c => c.date === date && c.ref.charAt(0) === "X").map(c => Number(c.ref.slice(1)));
+  let n = 50;
+  while (used.indexOf(n) !== -1) n++;
+  return n <= 99 ? n : 0;
+}
+function isCancelledOn(date, period) {
+  const c = changeFor(date, "P" + period);
+  return !!c && c.change === "cancel";
+}
+
+function renderChangeList(d) {
+  const list = changesFor(d);
+  $("chgList").innerHTML = list.length ? list.map(c => {
+    let label;
+    if (c.change === "cancel") label = "Period " + c.ref.slice(1) + " cancelled";
+    else if (c.change === "replace") {
+      const parts = [];
+      if (c.subject) parts.push("subject: " + c.subject);
+      if (c.teacher) parts.push("teacher: " + c.teacher);
+      if (c.start) parts.push(to12h(c.start) + " – " + to12h(c.end));
+      label = "Period " + c.ref.slice(1) + " changed (" + parts.join(", ") + ")";
+    } else {
+      label = (c.change === "pt" ? "PT / activity" : "Extra class") + ": " + c.subject + ", " +
+        to12h(c.start) + " – " + to12h(c.end) + (c.counted === "No" ? " (not counted)" : "");
+    }
+    return '<div class="dayrow"><span class="pill info">' + (c.change === "cancel" ? "Cancelled" : c.change === "replace" ? "Changed" : c.change === "pt" ? "PT" : "Extra") + "</span>" +
+      '<span style="font-weight:600;flex:1;min-width:160px">' + esc(label) +
+      (c.note ? '<div class="muted" style="font-size:12px;font-weight:400">' + esc(c.note) + "</div>" : "") + "</span>" +
+      '<button class="mini-btn danger" type="button" data-action="chg-del" data-value="' + esc(c.ref) + '">Remove</button></div>';
+  }).join("") : '<div class="muted" style="font-size:13px">No changes for this date. The weekly timetable applies.</div>';
+}
+
+function populateChangeForm(d) {
+  const periods = periodsFor(d).filter(r => r.type === "class" && !r.extra && !r.cancelled);
+  const sel = $("chgPeriod");
+  const keep = sel.value;
+  sel.innerHTML = periods.length
+    ? periods.map(r => '<option value="' + r.period + '">Period ' + r.period + " • " + esc(r.subject) + " (" + esc(to12h(r.start)) + ")</option>").join("")
+    : '<option value="">No timetable periods for this day</option>';
+  if (keep && periods.some(r => String(r.period) === keep)) sel.value = keep;
+  $("subjOptions").innerHTML = state.subjects.map(s => '<option value="' + esc(s) + '"></option>').join("");
+}
+
+function chgTypeChanged() {
+  const t = $("chgType").value;
+  $("chgPeriodWrap").hidden = !(t === "cancel" || t === "replace");
+  $("chgSubjWrap").hidden = t === "cancel";
+  $("chgSubjLabel").textContent = t === "pt" ? "Activity name" : t === "extra" ? "Subject" : "New subject (optional)";
+  $("chgTeacherWrap").hidden = t !== "replace";
+  $("chgTimeWrap").hidden = t === "cancel";
+  $("chgTimeLabel").textContent = t === "replace" ? "New timing (optional)" : "Start and end time";
+  $("chgCountedWrap").hidden = !(t === "extra" || t === "pt");
+  if (t === "pt") $("chgCounted").value = "No";
+  if (t === "extra") $("chgCounted").value = "Yes";
+}
+
+function resetChangeForm() {
+  $("chgSubject").value = "";
+  $("chgTeacher").value = "";
+  $("chgStart").value = "";
+  $("chgEnd").value = "";
+  $("chgNote").value = "";
+}
+
+function onChangeSubmit(e) {
+  e.preventDefault();
+  if (!requireStudent()) return;
+  const d = state.markDate || todayISO();
+  if (isHoliday(d)) { showError("This date is a holiday. Remove the holiday first."); return; }
+  const t = $("chgType").value;
+  const subject = $("chgSubject").value.trim().replace(/\s+/g, " ");
+  const teacher = $("chgTeacher").value.trim();
+  const start = $("chgStart").value;
+  const end = $("chgEnd").value;
+  const note = $("chgNote").value.trim();
+  const counted = t === "extra" || t === "pt" ? $("chgCounted").value : "Yes";
+  if (subject.length > SUBJECT_MAX || teacher.length > SUBJECT_MAX || note.length > SUBJECT_MAX) {
+    showError("Subject, teacher and note must be 60 characters or fewer"); return;
+  }
+
+  let ref;
+  if (t === "extra" || t === "pt") {
+    const n = nextExtraNo(d);
+    if (!n) { showError("Too many extra periods for this day"); return; }
+    ref = "X" + n;
+    if (!subject || !start || !end) { showError("Enter the subject, start time and end time"); return; }
+    if (start >= end) { showError("End time must be after the start time"); return; }
+    const clash = periodsFor(d).find(r => !r.cancelled && r.type === "class" && start < r.end && r.start < end);
+    if (clash) { showError("Overlaps " + (clash.extra ? "" : "Period " + clash.period + " ") + clash.subject + " (" + to12h(clash.start) + " – " + to12h(clash.end) + ")"); return; }
+  } else {
+    if (!$("chgPeriod").value) { showError("Choose a timetable period"); return; }
+    ref = "P" + $("chgPeriod").value;
+    if (t === "replace") {
+      if (!subject && !teacher && !start && !end) { showError("Change at least one of subject, teacher or timing"); return; }
+      if (!!start !== !!end) { showError("Enter both the new start and end time, or leave both empty"); return; }
+      if (start && end && start >= end) { showError("End time must be after the start time"); return; }
+    }
+  }
+
+  const payload = { action: "saveDayChange", changeDate: d, ref: ref, change: t, subject: subject, teacher: teacher,
+    start: start, end: end, counted: counted, note: note };
+  $("chgSave").disabled = true;
+  jsonp(payload).then(() => {
+    upsertChange({ date: d, ref: ref, change: t, subject: subject, teacher: teacher,
+      start: start ? hhmm(start) : "", end: end ? hhmm(end) : "", counted: t === "cancel" ? "No" : counted, note: note });
+    saveCache();
+    resetChangeForm();
+    renderAll();
+    toast("Change saved for " + fmtDate(d) + " only. Your weekly timetable is unchanged.");
+  }).catch(err => showError(err.message))
+    .finally(() => { $("chgSave").disabled = false; });
+}
+
+function removeChange(ref) {
+  if (!requireStudent()) return;
+  const d = state.markDate || todayISO();
+  if (!confirm("Remove this change for " + fmtDate(d) + "? Your weekly timetable is not affected.")) return;
+  jsonp({ action: "deleteDayChange", changeDate: d, ref: ref }).then(() => {
+    removeChangeLocal(d, ref);
+    if (state.attDraft[d]) delete state.attDraft[d][Number(ref.slice(1))];
+    saveCache();
+    renderAll();
+    toast("Change removed for this date");
+  }).catch(err => showError(err.message));
+}
+
+/* ============================================================
+   HOLIDAYS AND NON-WORKING DAYS (never counted, never absent)
+   ============================================================ */
+function renderHolidayBox(d) {
+  const h = holidayFor(d);
+  $("holForm").hidden = !!h;
+  $("holCurrent").hidden = !h;
+  if (h) {
+    $("holCurrent").innerHTML = '<div class="alert info" style="align-items:center"><div style="flex:1"><b>' + esc(h.type) + "</b>" +
+      (h.note ? " — " + esc(h.note) : "") + '<div class="muted" style="font-size:12px">Attendance cannot be marked and this date is not counted.</div></div>' +
+      '<button class="btn btn-ghost" type="button" data-action="hol-del" data-value="' + esc(h.date) + '" style="padding:6px 12px;font-size:12px">Remove holiday</button></div>';
+  }
+  const all = state.holidays.slice().sort((a, b) => a.date.localeCompare(b.date));
+  $("holList").innerHTML = all.length ? all.map(x =>
+    '<div class="dayrow"><b class="mono" style="font-size:13px">' + esc(fmtDate(x.date)) + "</b><span style=\"flex:1\">" + esc(x.type) +
+    (x.note ? " — " + esc(x.note) : "") + '</span><button class="mini-btn danger" type="button" data-action="hol-del" data-value="' + esc(x.date) + '">Remove</button></div>').join("")
+    : '<div class="muted" style="font-size:13px">No holidays added yet.</div>';
+}
+
+function onHolidaySubmit(e) {
+  e.preventDefault();
+  if (!requireStudent()) return;
+  const d = state.markDate || todayISO();
+  const type = $("holType").value;
+  const note = $("holNote").value.trim();
+  if (note.length > SUBJECT_MAX) { showError("Note must be 60 characters or fewer"); return; }
+  jsonp({ action: "saveHoliday", holidayDate: d, type: type, note: note }).then(() => {
+    state.holidays = state.holidays.filter(x => x.date !== d).concat([{ date: d, type: type, note: note }]);
+    saveCache();
+    $("holNote").value = "";
+    renderAll();
+    toast(type + " saved for " + fmtDate(d));
+  }).catch(err => showError(err.message));
+}
+
+function removeHoliday(date) {
+  if (!requireStudent()) return;
+  if (!confirm("Remove the holiday on " + fmtDate(date) + "?")) return;
+  jsonp({ action: "deleteHoliday", holidayDate: date }).then(() => {
+    state.holidays = state.holidays.filter(x => x.date !== date);
+    saveCache();
+    renderAll();
+    toast("Holiday removed");
+  }).catch(err => showError(err.message));
+}
+
+/* ============================================================
+   SEMESTERS: records are kept per semester and never mixed
+   ============================================================ */
+function curSem() { return state.student && state.student.semester ? String(state.student.semester) : ""; }
+function viewSem() { return state.viewSem || curSem(); }
+function semRecords() {
+  const s = viewSem();
+  return state.records.filter(r => !s || r.semester === s);
+}
+// Attendance used for every percentage: semester filter, no holidays, no cancelled or not-counted periods.
+function countedRecords() {
+  return semRecords().filter(r => r.counted !== false && !isHoliday(r.date) && !isCancelledOn(r.date, r.period));
+}
+
+function renderSemesterSelect() {
+  const sems = uniq([curSem()].concat(state.records.map(r => r.semester)).filter(Boolean))
+    .sort((a, b) => Number(a) - Number(b));
+  $("histSem").innerHTML = sems.length
+    ? sems.map(s => '<option value="' + esc(s) + '">Semester ' + esc(s) + (s === curSem() ? " (current)" : "") + "</option>").join("")
+    : '<option value="">No semester yet</option>';
+  $("histSem").value = viewSem();
+}
+
+function profileParams(s) {
+  return {
+    action: "registerStudent",
+    studentName: s.name, registerNumber: s.regNo, email: s.email, collegeName: s.college,
+    academicYear: s.academicYear, course: s.course, department: s.department, year: s.year,
+    class: s.cls, section: s.section, semester: s.semester
+  };
+}
+
+function moveSemester() {
+  if (!requireStudent()) return;
+  const n = $("newSem").value;
+  if (n === curSem()) { toast("You are already in Semester " + n); return; }
+  if (!confirm("Move to Semester " + n + "? Your earlier semester records stay saved and are never mixed with this one.")) return;
+  jsonp(profileParams(Object.assign({}, state.student, { semester: n }))).then(() => {
+    state.student.semester = n;
+    state.viewSem = "";
+    saveCache();
+    renderAll();
+    toast("Now in Semester " + n + ". Earlier semesters are kept separately.");
+  }).catch(err => showError(err.message));
+}
+
+/* ============================================================
+   ALERTS, IN-APP REMINDERS
+   ============================================================ */
+function renderAlerts() {
+  const box = $("alertBox");
+  if (!state.student) { box.hidden = true; box.innerHTML = ""; return; }
+  const bySub = groupBySubject(countedRecords());
+  const low = Object.keys(bySub).map(name => ({ name: name, st: statsOf(bySub[name]) }))
+    .filter(x => x.st.total && x.st.pct < 80)
+    .sort((a, b) => a.st.pct - b.st.pct);
+  box.hidden = low.length === 0;
+  box.innerHTML = low.map(x =>
+    '<div class="alert warnbox" role="alert"><span class="warn-ico">!</span><div style="flex:1"><b>' + esc(x.name) +
+    " is below 80%</b> — current attendance " + fmtPct(x.st.pct) + ". Attend the next <b>" +
+    neededConsec(x.st.attended, x.st.total, 80) + "</b> class(es) in a row to recover.</div></div>").join("");
+}
+
+function nowHHMM() {
+  const d = new Date();
+  return pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+
+function checkReminder() {
+  const box = $("remindBox");
+  const today = todayISO();
+  const due = !!state.student && state.settings.reminders === "on" && !!dayName(today) && !isHoliday(today) &&
+    nowHHMM() >= (state.settings.reminderTime || "19:00") &&
+    periodsFor(today).some(isMarkable) &&
+    !state.records.some(r => r.date === today);
+  box.hidden = !due;
+  if (due) {
+    let shown = "";
+    try { shown = localStorage.getItem(REMIND_SHOWN_KEY) || ""; } catch (e) { /* storage blocked */ }
+    if (shown !== today) {
+      try { localStorage.setItem(REMIND_SHOWN_KEY, today); } catch (e) { /* ignore */ }
+      toast("Reminder: mark today's attendance");
+    }
+  }
+}
+
+function saveReminders() {
+  if (!requireStudent()) return;
+  const t = $("remTime").value;
+  if (!/^\d{2}:\d{2}$/.test(t)) { showError("Choose a reminder time"); return; }
+  const settings = {
+    reminders: $("remOn").checked ? "on" : "off",
+    reminderEmail: $("remEmail").checked ? "on" : "off",
+    reminderTime: t
+  };
+  jsonp({ action: "saveSettings", settings: JSON.stringify(settings) }).then(() => {
+    state.settings = settings;
+    saveCache();
+    checkReminder();
+    toast("Reminder settings saved");
+  }).catch(err => showError(err.message));
+}
+
+/* ============================================================
+   THEME (light / dark / follow device), saved on this device
+   ============================================================ */
+function applyTheme(t) {
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  else document.documentElement.removeAttribute("data-theme");
+}
+function themeChoice() {
+  try { return localStorage.getItem(THEME_KEY) || "system"; } catch (e) { return "system"; }
+}
+function setTheme(choice) {
+  try {
+    if (choice === "system") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, choice);
+  } catch (e) { /* storage blocked: the choice lasts for this visit only */ }
+  applyTheme(choice === "system" ? "" : choice);
+  renderAppSettings();
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme");
+  const dark = current === "dark" || (!current && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+  setTheme(dark ? "light" : "dark");
+}
+
+function renderAppSettings() {
+  const choice = themeChoice();
+  document.querySelectorAll('[data-action="theme"]').forEach(b => b.classList.toggle("on", b.dataset.value === choice));
+  $("remOn").checked = state.settings.reminders === "on";
+  $("remEmail").checked = state.settings.reminderEmail === "on";
+  $("remTime").value = state.settings.reminderTime || "19:00";
+  $("semCurrent").textContent = curSem() ? "You are in Semester " + curSem() + "." : "Save your profile to set a semester.";
+  $("newSem").value = curSem() || "1";
+}
+
+/* ============================================================
+   FORGOT PASSWORD (emailed 6-digit code; the password never goes in the web address)
+   ============================================================ */
+function forgotShow(on) {
+  $("forgotPanel").hidden = !on;
+  $("loginForm").hidden = on;
+  $("gotoCreate").hidden = on;
+  $("forgotLink").hidden = on;
+  $("forgotStep2").hidden = true;
+  authMsg("");
+  if (on && $("lReg").value) $("fReg").value = $("lReg").value.trim().toUpperCase();
+}
+function onForgotRequest(e) {
+  e.preventDefault();
+  const reg = $("fReg").value.trim().toUpperCase();
+  if (!reg) { authMsg("Enter your register number."); return; }
+  authMsg("Sending…");
+  postThenFetch({ action: "forgotRequest", registerNumber: reg })
+    .then(d => { authMsg(d.message); $("forgotStep2").hidden = false; })
+    .catch(err => authMsg(err.message));
+}
+function onForgotReset(e) {
+  e.preventDefault();
+  const reg = $("fReg").value.trim().toUpperCase();
+  const code = $("fCode").value.trim();
+  const p1 = $("fPass").value;
+  const p2 = $("fPass2").value;
+  if (!/^\d{6}$/.test(code)) { authMsg("Enter the 6-digit code from your email."); return; }
+  if (p1.length < 8) { authMsg("Password must be at least 8 characters."); return; }
+  if (p1 !== p2) { authMsg("Passwords do not match."); return; }
+  authMsg("Changing password…");
+  postThenFetch({ action: "forgotReset", registerNumber: reg, code: code, newPassword: p1 })
+    .then(d => {
+      $("fCode").value = ""; $("fPass").value = ""; $("fPass2").value = "";
+      forgotShow(false);
+      $("lReg").value = reg;
+      authMsg(d.message);
+    })
+    .catch(err => authMsg(err.message));
+}
+
+/* ============================================================
+   EXPORT: Excel (.xlsx) and PDF, using the History filters
+   ============================================================ */
+function reportRows() {
+  const from = state.histFrom, to = state.histTo, subj = state.histSubject;
+  return semRecords()
+    .filter(r => (!from || r.date >= from) && (!to || r.date <= to) && (subj === "all" || r.subject === subj))
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+function reportSummary(rows) {
+  const counted = rows.filter(r => r.counted !== false && !isHoliday(r.date) && !isCancelledOn(r.date, r.period));
+  const bySub = groupBySubject(counted);
+  return {
+    overall: statsOf(counted),
+    subjects: Object.keys(bySub).sort().map(name => Object.assign({ name: name }, statsOf(bySub[name])))
+  };
+}
+function studentInfoRows() {
+  const s = state.student || {};
+  return [
+    ["Student name", s.name || ""], ["Register number", s.regNo || ""], ["Email", s.email || ""],
+    ["College", s.college || ""], ["Course", s.course || ""], ["Department", s.department || ""],
+    ["Year", s.year || ""], ["Semester", viewSem()], ["Academic year", s.academicYear || ""],
+    ["Class / section", [s.cls, s.section].filter(Boolean).join(" / ")],
+    ["Filters", filterText()]
+  ];
+}
+function filterText() {
+  const parts = ["Semester " + viewSem()];
+  if (state.histFrom || state.histTo) parts.push("Dates " + (state.histFrom || "start") + " to " + (state.histTo || "today"));
+  if (state.histSubject !== "all") parts.push("Subject " + state.histSubject);
+  return parts.join(", ");
+}
+function weekdayOf(iso) { return parseISO(iso).toLocaleDateString("en-US", { weekday: "long" }); }
+function recordLines(rows) {
+  return rows.map(r => [r.date, weekdayOf(r.date), r.subject,
+    r.period >= 50 ? (r.kind === "pt" ? "PT" : "Extra") : (r.period || ""),
+    r.time, r.endTime, r.status, r.counted === false ? "No" : "Yes", r.semester]);
+}
+function fileName(ext) {
+  return "attendance_" + (state.student ? state.student.regNo : "report") + "_" + todayISO() + "." + ext;
+}
+function csvCell(v) {
+  const s = String(v == null ? "" : v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function downloadText(text, name, mime) {
+  const blob = new Blob(["﻿" + text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = XLSX_URL;
+    s.onload = () => (window.XLSX ? resolve(window.XLSX) : reject(new Error("The Excel library did not load.")));
+    s.onerror = () => reject(new Error("The Excel library could not be loaded (offline?)."));
+    document.head.appendChild(s);
+  });
+}
+function exportXlsx() {
+  if (!requireStudent()) return;
+  const rows = reportRows();
+  if (!rows.length) { showError("No attendance records match these filters."); return; }
+  const rep = reportSummary(rows);
+  const summary = studentInfoRows().concat([[], ["Overall attendance (counted classes)", fmtPct(rep.overall.pct)],
+    ["Attended", rep.overall.attended], ["Absent", rep.overall.absent], ["Total counted", rep.overall.total], [],
+    ["Subject", "Total", "Attended", "Absent", "Percentage"]],
+    rep.subjects.map(x => [x.name, x.total, x.attended, x.absent, x.total ? fmtPct(x.pct) : "—"]));
+  const header = [["Date", "Day", "Subject", "Period", "Start", "End", "Status", "Counted", "Semester"]];
+  const records = header.concat(recordLines(rows));
+
+  loadXlsx().then(XLSX => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(records), "Attendance");
+    XLSX.writeFile(wb, fileName("xlsx"));
+    toast("Excel file downloaded");
+  }).catch(() => {
+    const text = summary.concat([[], ["Attendance records"]], records)
+      .map(line => line.map(csvCell).join(",")).join("\r\n");
+    downloadText(text, fileName("csv"), "text/csv;charset=utf-8");
+    toast("Excel could not load, so a CSV file was downloaded instead.", "err");
+  });
+}
+function pdfTable(head, body) {
+  return "<table><thead><tr>" + head.map(h => "<th>" + esc(h) + "</th>").join("") + "</tr></thead><tbody>" +
+    body.map(r => "<tr>" + r.map(c => "<td>" + esc(c) + "</td>").join("") + "</tr>").join("") + "</tbody></table>";
+}
+function exportPdf() {
+  if (!requireStudent()) return;
+  const rows = reportRows();
+  if (!rows.length) { showError("No attendance records match these filters."); return; }
+  const rep = reportSummary(rows);
+  $("printReport").innerHTML =
+    "<h1>Attendance report</h1>" +
+    pdfTable(["Field", "Value"], studentInfoRows()) +
+    "<h2>Overall: " + esc(fmtPct(rep.overall.pct)) + " (" + rep.overall.attended + " of " + rep.overall.total + " counted classes attended)</h2>" +
+    pdfTable(["Subject", "Total", "Attended", "Absent", "Percentage"],
+      rep.subjects.map(x => [x.name, x.total, x.attended, x.absent, x.total ? fmtPct(x.pct) : "—"])) +
+    "<h2>Records</h2>" +
+    pdfTable(["Date", "Day", "Subject", "Period", "Start", "End", "Status", "Counted", "Semester"], recordLines(rows));
+  window.print();
+}
+
+/* ============================================================
+   CHARTS (SVG, drawn from the saved records)
+   ============================================================ */
+function svgGrid(L, R, T, ih, W) {
+  let g = "";
+  [0, 25, 50, 75, 100].forEach(v => {
+    const y = T + ih - (v / 100) * ih;
+    g += '<line class="gridline" x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '"/>' +
+      '<text class="axis" x="' + (L - 6) + '" y="' + (y + 4) + '" text-anchor="end">' + v + "%</text>";
+  });
+  return g;
+}
+function svgLines(labels, series, threshold) {
+  const W = 640, H = 240, L = 40, R = 12, T = 12, B = 34;
+  const iw = W - L - R, ih = H - T - B, n = labels.length;
+  const X = i => L + (n <= 1 ? iw / 2 : (i * iw) / (n - 1));
+  const Y = v => T + ih - (Math.max(0, Math.min(100, v)) / 100) * ih;
+  let g = svgGrid(L, R, T, ih, W);
+  if (threshold != null) {
+    g += '<line class="threshold" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(threshold) + '" y2="' + Y(threshold) + '"/>';
+  }
+  series.forEach(s => {
+    let d = "";
+    s.values.forEach((v, i) => { if (v != null) d += (d ? " L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); });
+    if (d) g += '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2.4" stroke-linejoin="round"/>';
+    s.values.forEach((v, i) => {
+      if (v == null) return;
+      g += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="3.2" fill="' + s.color + '"><title>' +
+        esc(s.name) + " · " + esc(labels[i]) + ": " + v.toFixed(1) + "%</title></circle>";
+    });
+  });
+  [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i).forEach(i => {
+    g += '<text class="axis" x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(labels[i]) + "</text>";
+  });
+  return '<svg viewBox="0 0 ' + W + " " + H + '" class="chart" role="img" aria-label="Attendance trend chart">' + g + "</svg>";
+}
+function svgBars(labels, values) {
+  const W = 640, H = 240, L = 40, R = 12, T = 12, B = 34;
+  const iw = W - L - R, ih = H - T - B, n = labels.length;
+  const slot = iw / n, bw = Math.min(56, slot * 0.6);
+  const Y = v => T + ih - (Math.max(0, Math.min(100, v)) / 100) * ih;
+  let g = svgGrid(L, R, T, ih, W);
+  const ty = Y(80);
+  g += '<line class="threshold" x1="' + L + '" x2="' + (W - R) + '" y1="' + ty + '" y2="' + ty + '"/>';
+  values.forEach((v, i) => {
+    if (v == null) return;
+    const x = L + slot * i + (slot - bw) / 2;
+    const y = Y(v);
+    const band = v < 80 ? "bad" : v <= 82 ? "warn" : "ok";
+    g += '<rect class="bar-' + band + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) +
+      '" height="' + (T + ih - y).toFixed(1) + '" rx="4"><title>' + esc(labels[i]) + ": " + v.toFixed(1) + "%</title></rect>" +
+      '<text class="axis" x="' + (x + bw / 2).toFixed(1) + '" y="' + (y - 5).toFixed(1) + '" text-anchor="middle">' + Math.round(v) + "%</text>";
+  });
+  labels.forEach((l, i) => {
+    g += '<text class="axis" x="' + (L + slot * i + slot / 2).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(l) + "</text>";
+  });
+  return '<svg viewBox="0 0 ' + W + " " + H + '" class="chart" role="img" aria-label="Attendance bar chart">' + g + "</svg>";
+}
+function chartEmpty() { return '<div class="muted" style="font-size:13px;padding:24px 0;text-align:center">No attendance data yet for this chart.</div>'; }
+function shortDate(iso) { return fmtDate(iso, { month: "short", day: "numeric" }); }
+function weekStart(iso) {
+  const dt = parseISO(iso);
+  dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+  return isoOf(dt);
+}
+function renderCharts() {
+  const recs = countedRecords();
+  const byDate = {};
+  recs.forEach(r => { (byDate[r.date] = byDate[r.date] || []).push(r); });
+  const dates = Object.keys(byDate).sort();
+
+  // Overall trend: cumulative attendance % after each date
+  let att = 0, tot = 0;
+  const overall = dates.map(d => {
+    byDate[d].forEach(r => { tot++; if (r.status === "Present") att++; });
+    return pct(att, tot);
+  });
+  $("chartOverall").innerHTML = dates.length
+    ? svgLines(dates.map(shortDate), [{ name: "Overall", color: CHART_COLORS[0], values: overall }], 80)
+    : chartEmpty();
+
+  // Subject-wise trend (up to 5 subjects, carried forward from their first class)
+  const bySub = groupBySubject(recs);
+  const subs = Object.keys(bySub).sort((a, b) => bySub[b].length - bySub[a].length).slice(0, 5);
+  const series = subs.map((name, i) => {
+    let a = 0, t = 0, started = false;
+    const values = dates.map(d => {
+      byDate[d].forEach(r => { if (r.subject === name) { started = true; t++; if (r.status === "Present") a++; } });
+      return started ? pct(a, t) : null;
+    });
+    return { name: name, color: CHART_COLORS[i % CHART_COLORS.length], values: values };
+  });
+  $("chartSubjects").innerHTML = series.length ? svgLines(dates.map(shortDate), series, 80) : chartEmpty();
+  $("chartLegend").innerHTML = series.map(s =>
+    '<span style="display:inline-flex;gap:6px;align-items:center"><i style="width:10px;height:10px;border-radius:3px;background:' + s.color + '"></i>' + esc(s.name) + "</span>").join("");
+
+  // Weekly trend (last 12 weeks)
+  const weeks = uniq(recs.map(r => weekStart(r.date))).sort().slice(-12);
+  $("chartWeekly").innerHTML = weeks.length
+    ? svgBars(weeks.map(w => "W/c " + shortDate(w)), weeks.map(w => statsOf(recs.filter(r => weekStart(r.date) === w)).pct))
+    : chartEmpty();
+
+  // Monthly trend (last 12 months)
+  const months = uniq(recs.map(r => r.date.slice(0, 7))).sort().slice(-12);
+  $("chartMonthly").innerHTML = months.length
+    ? svgBars(months.map(m => fmtDate(m + "-01", { month: "short", year: "2-digit" })),
+        months.map(m => statsOf(recs.filter(r => r.date.slice(0, 7) === m)).pct))
+    : chartEmpty();
+}
+function renderHistoryExtras() {
+  renderSemesterSelect();
+  renderCharts();
+}
+
+/* ============================================================
+   INSTALL (PWA) AND OFFLINE NOTICE
+   ============================================================ */
+let deferredInstall = null;
+function installApp() {
+  if (!deferredInstall) {
+    toast("Use your browser menu: Add to Home screen (iPhone) or Install app (Android / Chrome).");
+    return;
+  }
+  deferredInstall.prompt();
+  deferredInstall.userChoice.finally(() => { deferredInstall = null; $("installBtn").hidden = true; });
+}
+function registerWorker() {
+  if ("serviceWorker" in navigator && /^https?:/.test(location.protocol)) {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* app still works without it */ });
+  }
+}
+
+/* ============================================================
+   NAVIGATION, EVENTS, INIT
+   ============================================================ */
+function show(name, silent) {
+  if (!VIEWS.includes(name)) name = "dashboard";
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === name));
+  document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === name));
+  try { history.replaceState(null, "", "#" + name); } catch (e) { /* file:// may block this */ }
+  if (!silent) window.scrollTo({ top: 0 });
+}
+
+function bindEvents() {
+  document.addEventListener("click", e => {
+    const el = e.target.closest("[data-view],[data-action]");
+    if (!el) return;
+    if (el.dataset.view) { show(el.dataset.view); return; }
+    const v = el.dataset.value;
+    switch (el.dataset.action) {
+      case "mark-extra":
+        markExtra(v);
+        break;
+      case "mark-period": {
+        const d = el.dataset.date;
+        const row = periodsFor(d).find(x => x.period === Number(el.dataset.period));
+        if (row) markPeriod(row, v, d);
+        break;
+      }
+      case "date-step":
+        state.markDate = addDays(state.markDate || todayISO(), Number(v));
+        renderMark();
+        break;
+      case "target":
+        state.target = Number(v);
+        saveCache();
+        renderAll();
+        break;
+      case "log-mode":
+        state.logMode = v;
+        state.logPage = 1;
+        renderHistory();
+        break;
+      case "log-page":
+        state.logPage += Number(v);
+        renderHistory();
+        break;
+      case "export-xlsx":
+        exportXlsx();
+        break;
+      case "export-pdf":
+        exportPdf();
+        break;
+      case "chg-del":
+        removeChange(v);
+        break;
+      case "hol-del":
+        removeHoliday(v);
+        break;
+      case "theme":
+        setTheme(v);
+        break;
+      case "theme-toggle":
+        toggleTheme();
+        break;
+      case "forgot-open":
+        forgotShow(true);
+        break;
+      case "forgot-close":
+        forgotShow(false);
+        break;
+      case "planner":
+        toast("Added to planner");
+        break;
+      case "export":
+        exportXlsx();
+        break;
+      case "notify":
+        toast("No new notifications");
+        break;
+      case "tt-day":
+        state.setupDay = v;
+        resetPeriodForm();
+        renderSetup();
+        break;
+      case "pedit":
+        startEditPeriod(Number(v));
+        break;
+      case "pdel":
+        deletePeriod(Number(v));
+        break;
+      case "subj-edit":
+        startSubjEdit(v);
+        break;
+      case "subj-del":
+        deleteSubject(v);
+        break;
+      case "prof-load": {
+        loadFromSheet().then(found => {
+          if (found === true) toast("Your saved data is up to date");
+          else if (found === false) showError("No saved profile found for your account");
+          else showError("Could not load data. Check your connection.");
+        });
+        break;
+      }
+    }
+  });
+
+  $("markDate").addEventListener("change", e => {
+    state.markDate = e.target.value || todayISO();
+    renderMark();
+  });
+
+  $("pType").addEventListener("change", toggleSubjField);
+  $("periodForm").addEventListener("submit", onPeriodSubmit);
+  $("pCancelBtn").addEventListener("click", () => { resetPeriodForm(); });
+  $("copyBtn").addEventListener("click", copyFromDay);
+  $("clearDayBtn").addEventListener("click", clearDay);
+  $("saveDayBtn").addEventListener("click", () => saveDay(state.setupDay));
+  $("subjBtn").addEventListener("click", onSubjectSubmit);
+  $("subjCancel").addEventListener("click", clearSubjForm);
+
+  $("loginForm").addEventListener("submit", onLoginSubmit);
+  $("gotoCreate").addEventListener("click", startCreateAccount);
+  $("backToLogin").addEventListener("click", leaveCreateAccount);
+  $("logoutBtn").addEventListener("click", () => { clearSession(); show("dashboard"); toast("Logged out"); });
+  $("pCourse").addEventListener("change", onCourseChange);
+  $("pDept").addEventListener("change", onDeptChange);
+  $("pCourseOther").addEventListener("input", () => { profileDirty = true; updatePreview(); });
+  $("saveAllBtn").addEventListener("click", saveAllDays);
+  $("histFrom").addEventListener("change", e => { state.histFrom = e.target.value; state.logPage = 1; renderHistory(); });
+  $("histTo").addEventListener("change", e => { state.histTo = e.target.value; state.logPage = 1; renderHistory(); });
+
+  $("histMonth").addEventListener("change", e => { state.histMonth = e.target.value; state.logPage = 1; renderHistory(); });
+  $("histSubject").addEventListener("change", e => { state.histSubject = e.target.value; state.logPage = 1; renderHistory(); });
+
+  $("simSlider").addEventListener("input", renderSim);
+
+  $("profileForm").addEventListener("input", () => { profileDirty = true; updatePreview(); });
+  $("profileForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const v = readProfileForm();
+    const err = validateProfile(v);
+    if (err) { showError(err); return; }
+    if (!state.token) {
+      if ($("pPass").value.length < 8) { showError("Password must be at least 8 characters"); return; }
+      if ($("pPass").value !== $("pPass2").value) { showError("Passwords do not match"); return; }
+    }
+
+    state.student = {
+      name: v.studentName, regNo: v.registerNumber, email: v.email,
+      college: v.collegeName, academicYear: v.academicYear,
+      course: v.course, department: v.department, year: v.year,
+      cls: v.class, section: v.section, semester: v.semester
+    };
+    profileDirty = false;
+    saveCache();
+    renderAll();
+    show("dashboard");
+
+    const isNew = !state.token;
+    const send = isNew ? postThenFetch : jsonp;
+    send({
+      action: isNew ? "register" : "registerStudent",
+      password: $("pPass").value,
+      studentName: v.studentName,
+      registerNumber: v.registerNumber,
+      email: v.email,
+      collegeName: v.collegeName,
+      academicYear: v.academicYear,
+      course: v.course,
+      department: v.department,
+      year: v.year,
+      class: v.class,
+      section: v.section,
+      semester: v.semester
+    })
+      .then(res => {
+        if (res.token) {
+          saveToken(res.token);
+          state.creating = false;
+          toggleAuthUI();
+        }
+        toast("Profile saved to Google Sheets");
+        loadFromSheet();
+      })
+      .catch(e2 => showError("Not saved to Google Sheets: " + e2.message));
+  });
+  $("markAllBtn").addEventListener("click", markAllPresent);
+  $("saveAttBtn").addEventListener("click", () => {
+    saveAttendanceDay(state.markDate || todayISO()).catch(err => showError(err.message));
+  });
+  $("chgType").addEventListener("change", chgTypeChanged);
+  $("chgForm").addEventListener("submit", onChangeSubmit);
+  $("holForm").addEventListener("submit", onHolidaySubmit);
+  $("histSem").addEventListener("change", e => {
+    const v = e.target.value;
+    state.viewSem = v === curSem() ? "" : v;
+    state.logPage = 1;
+    renderAll();
+  });
+  $("remSave").addEventListener("click", saveReminders);
+  $("semMoveBtn").addEventListener("click", moveSemester);
+  $("installBtn").addEventListener("click", installApp);
+  $("forgotStep1").addEventListener("submit", onForgotRequest);
+  $("forgotStep2").addEventListener("submit", onForgotReset);
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    deferredInstall = e;
+    $("installBtn").hidden = false;
+  });
+  window.addEventListener("offline", () => toast("You are offline. Attendance cannot be saved until you reconnect.", "err"));
+}
+
+function init() {
+  loadCache();
+  bindEvents();
+  toggleAuthUI();
+  applyTheme(themeChoice() === "system" ? "" : themeChoice());
+  state.markDate = todayISO();
+  $("markDate").value = state.markDate;
+  state.setupDay = dayName(todayISO()) || "Monday";
+  populateCourseSelect("");
+  populateDeptSelect("", "");
+  populateYearSem();
+  $("newSem").innerHTML = Array.from({ length: 12 }, (_, i) => '<option value="' + (i + 1) + '">Semester ' + (i + 1) + "</option>").join("");
+  fillProfileForm(true);
+  resetPeriodForm();
+  chgTypeChanged();
+  forgotShow(false);
+  show((location.hash || "#dashboard").slice(1), true);
+  renderAll();
+  if (state.token) loadFromSheet();
+  setInterval(checkReminder, 60000);
+  registerWorker();
+}
+
+init();
+</script>
+</body>
+</html>
